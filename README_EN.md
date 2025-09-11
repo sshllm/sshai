@@ -197,7 +197,7 @@ Issues and Pull Requests are welcome!
 
 ## 📄 License
 
-This project is licensed under a Personal Use License, allowing personal and educational use, but not commercial use. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
@@ -205,4 +205,4 @@ Thanks to all developers and users who have contributed to this project!
 
 ---
 
-**Note**: This project is for personal learning and research use only. For commercial use, please contact the project maintainers to obtain a commercial license.
+**Note**: This project follows the Apache 2.0 open source license, welcoming both personal and commercial use.

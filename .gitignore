@@ -4,3 +4,5 @@ sshai-modular
 build
 dist
 server.log
+.git-local
+.git
