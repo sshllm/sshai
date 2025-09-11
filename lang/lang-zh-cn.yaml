@@ -1,0 +1,82 @@
+# 简体中文语言包
+# Simplified Chinese Language Pack
+
+# 服务器相关
+server:
+  starting: "正在启动SSH服务器，端口: %s"
+  started: "SSH服务器已启动，监听端口: %s"
+  error: "服务器错误: %v"
+  shutdown: "服务器正在关闭..."
+
+# 连接相关
+connection:
+  new: "新连接来自: %s"
+  auth_failed: "认证失败: %v"
+  established: "连接已建立"
+  closed: "连接已关闭"
+
+# 认证相关
+auth:
+  password_prompt: "请输入访问密码: "
+  password_incorrect: "密码错误，请重试"
+  login_success: "登录成功！"
+  login_failed: "登录失败"
+
+# 模型相关
+model:
+  loading: "正在加载模型列表..."
+  loaded: "模型列表加载完成"
+  error: "获取模型列表失败: %v"
+  auto_selected: "根据用户名 '%s' 自动选择模型: %s"
+  multiple_matches: "找到多个与用户名 '%s' 匹配的模型:"
+  no_matches: "没有找到与用户名 '%s' 匹配的模型，显示所有可用模型:"
+  no_available: "没有找到可用的模型"
+  auto_only: "自动选择唯一可用模型: %s"
+  select_prompt: "请选择模型 (输入数字): "
+  selected: "已选择模型: %s"
+  invalid_choice: "无效选择，请重新输入: "
+  cache_hit: "使用缓存的模型列表"
+  cache_miss: "缓存过期，重新获取模型列表"
+
+# AI对话相关
+ai:
+  thinking: "正在思考..."
+  thinking_process: "🤔 思考过程:"
+  thinking_complete: "💡 思考完成 (用时: %.1f秒)"
+  response: "💬 回答:"
+  interrupted: "[已中断]"
+  error: "AI请求失败: %v"
+  request_failed: "构建请求失败: %v"
+  network_error: "网络请求失败: %v"
+
+# 用户交互
+user:
+  welcome: "欢迎使用SSHAI！"
+  prompt: "%s@sshai.top> "
+  input_empty: "请输入消息"
+  exit: "再见！"
+  help: "输入消息与AI对话，输入 'exit' 退出"
+  clear_context: "对话上下文已清空"
+
+# 命令相关
+cmd:
+  exit: "exit"
+  help: "help"
+  clear: "clear"
+  unknown: "未知命令: %s"
+
+# 错误消息
+error:
+  config_load: "加载配置失败: %v"
+  key_load: "加载SSH密钥失败: %v"
+  server_start: "启动服务器失败: %v"
+  connection: "连接错误: %v"
+  internal: "内部错误: %v"
+  lang_load: "加载语言包失败: %v"
+  lang_not_found: "语言包文件不存在: %s"
+
+# 系统消息
+system:
+  version: "SSHAI v1.0 - SSH AI Assistant"
+  project_url: "项目地址: https://github.com/your-repo/sshai"
+  config_file: "配置文件: config.yaml"

@@ -1,0 +1,43 @@
+# SSH AI Server Configuration File (English Version)
+
+# Server Configuration
+server:
+  port: "2212"
+  welcome_message: "Hello! Welcome to SSHAI!"
+  prompt_template: "%s@sshai.top> "
+
+# Authentication Configuration
+auth:
+  password: ""  # Leave empty for no password authentication, set password to require authentication
+  login_prompt: "Enter access password: "
+  login_success_message: |
+    🎉 Welcome to SSHAI v1.0 - SSH AI Assistant
+    
+    📖 Project URL: https://github.com/sshllm/sshai
+    🚀 Version Info: v1.0.0 - Modular SSH AI Assistant
+    💡 Usage: Enter messages to chat with AI, type 'exit' to quit
+    🔧 Config File: config.yaml (supports dynamic modification)
+    
+    ════════════════════════════════════════
+
+# AI API Configuration
+api:
+  base_url: "http://localhost:11434/v1"
+  api_key: ""
+  default_model: "deepseek-v3"
+  timeout: 600  # Request timeout (seconds)
+
+
+# Display Configuration
+display:
+  line_width: 80  # Terminal display width
+  thinking_animation_interval: 150  # Thinking animation interval (milliseconds)
+  loading_animation_interval: 100   # Loading animation interval (milliseconds)
+
+# Security Configuration
+security:
+  host_key_file: "host_key.pem"  # SSH host key file path
+
+# Internationalization Configuration
+i18n:
+  language: "en-us"  # Supported languages: zh-cn (Simplified Chinese), en-us (English)

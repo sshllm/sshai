@@ -1,0 +1,54 @@
+SSHAI Personal Use License
+
+Copyright (c) 2025 SSHAI Project Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to use
+the Software for personal, educational, and non-commercial purposes, subject
+to the following conditions:
+
+1. PERSONAL USE ONLY: The Software may only be used for personal, educational,
+   research, or other non-commercial purposes. Commercial use, including but
+   not limited to selling, licensing, or using the Software in any commercial
+   product or service, is strictly prohibited without explicit written
+   permission from the copyright holders.
+
+2. ATTRIBUTION: All copies or substantial portions of the Software must
+   retain the above copyright notice, this permission notice, and the
+   following attribution notice in all copies, distributions, or derivative
+   works:
+   
+   "This software is based on SSHAI (SSH AI Assistant)
+   Original project: https://github.com/sshllm/sshai
+   Copyright (c) 2025 SSHAI Project Contributors"
+
+3. NO WARRANTY: THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+   DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+   OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+   USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+4. DISTRIBUTION: You may distribute copies of the Software, provided that:
+   - All copyright notices and this license are included
+   - The distribution is for non-commercial purposes only
+   - Any modifications are clearly marked as such
+   - The original source is properly attributed
+
+5. MODIFICATIONS: You may modify the Software for personal use, but any
+   distribution of modified versions must:
+   - Clearly indicate the modifications made
+   - Retain all original copyright notices
+   - Include this license
+   - Not be used for commercial purposes
+
+6. COMMERCIAL LICENSING: For commercial use, please contact the project
+   maintainers to obtain a commercial license.
+
+For questions about licensing, please contact: [project-email@example.com]
+
+---
+
+This license is designed to encourage personal use, learning, and contribution
+while protecting the commercial interests of the original authors.

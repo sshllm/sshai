@@ -1,0 +1,51 @@
+# SSH AI 服务器配置文件
+
+# 服务器配置
+server:
+  port: "2213"
+  welcome_message: "Hello!欢迎使用SSHAI！"
+  prompt_template: "%s@sshai.top> "
+
+# 认证配置
+auth:
+  password: ""  # 留空则不需要密码认证，设置密码则需要认证
+  login_prompt: "请输入访问密码: "
+  login_success_message: "     ╭──╮\n     │██│        🚀 SSHAI v0.9.11 - Smart SSH AI Assistant\n   ╭─┴──┴─╮      ─────────────────────────────────────────────\n   │ ◉  ◉ │      \n   │   ▿  │      🤖 随时随地使用的在线AI助手\n   ╰─┬──┬─╯      \n     │  │        🌍 Website: https://sshai.top\n   ╭─┴──┴─╮      📦 GitHub:  https://github.com/sshllm/sshai\n   │ ████ │      \n   ╰──────╯      ⚡ AI-Powered | Cross-Platform | Real-time\n     ╱  ╲        🎯 Built for modern developers and system admins\n    ╱    ╲       \n"
+
+# AI API配置
+api:
+  base_url: "http://localhost:11434/v1"
+  api_key: ""
+  default_model: "deepseek-v3"
+  timeout: 600  # 请求超时时间（秒）
+
+# 显示配置
+display:
+  line_width: 80  # 终端显示宽度
+  thinking_animation_interval: 150  # 思考动画间隔（毫秒）
+  loading_animation_interval: 100   # 加载动画间隔（毫秒）
+
+# 证书配置
+security:
+  host_key_file: "host_key.pem"  # SSH主机密钥文件路径
+
+# 国际化配置
+i18n:
+  language: "zh-cn"  # 支持的语言: zh-cn (简体中文), en-us (英文)
+
+# AI提示词配置
+prompt:
+  # 系统提示词 - 定义AI的角色和行为
+  system_prompt: "你是一个专业的AI助手，擅长回答各种问题。请用简洁、准确、有帮助的方式回答用户的问题。"
+  
+  # 用户消息前缀 - 在用户输入前添加的提示
+  user_prompt: "用户问题："
+  
+  # 助手回复前缀 - 在AI回复前添加的提示
+  assistant_prompt: "AI助手："
+  
+  # stdin输入分析提示词 - 当用户通过管道输入内容时使用
+  stdin_prompt: "请分析以下内容并提供相关的帮助、建议或解释。如果是代码，请提供代码分析和改进建议；如果是配置文件，请检查配置并提供优化建议；如果是文档，请总结要点并提供相关建议："
+  
+  # exec命令处理提示词 - 当用户通过SSH exec执行命令时使用
+  exec_prompt: "请回答以下问题或执行以下任务："

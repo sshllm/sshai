@@ -1,0 +1,82 @@
+# English Language Pack
+# 英文语言包
+
+# Server related
+server:
+  starting: "Starting SSH server on port: %s"
+  started: "SSH server started, listening on port: %s"
+  error: "Server error: %v"
+  shutdown: "Server is shutting down..."
+
+# Connection related
+connection:
+  new: "New connection from: %s"
+  auth_failed: "Authentication failed: %v"
+  established: "Connection established"
+  closed: "Connection closed"
+
+# Authentication related
+auth:
+  password_prompt: "Enter access password: "
+  password_incorrect: "Incorrect password, please try again"
+  login_success: "Login successful!"
+  login_failed: "Login failed"
+
+# Model related
+model:
+  loading: "Loading model list..."
+  loaded: "Model list loaded successfully"
+  error: "Failed to get model list: %v"
+  auto_selected: "Auto-selected model based on username '%s': %s"
+  multiple_matches: "Found multiple models matching username '%s':"
+  no_matches: "No models found matching username '%s', showing all available models:"
+  no_available: "No available models found"
+  auto_only: "Auto-selected the only available model: %s"
+  select_prompt: "Please select a model (enter number): "
+  selected: "Selected model: %s"
+  invalid_choice: "Invalid choice, please try again: "
+  cache_hit: "Using cached model list"
+  cache_miss: "Cache expired, fetching new model list"
+
+# AI conversation related
+ai:
+  thinking: "Thinking..."
+  thinking_process: "🤔 Thinking process:"
+  thinking_complete: "💡 Thinking complete (took: %.1f seconds)"
+  response: "💬 Response:"
+  interrupted: "[Interrupted]"
+  error: "AI request failed: %v"
+  request_failed: "Failed to build request: %v"
+  network_error: "Network request failed: %v"
+
+# User interaction
+user:
+  welcome: "Welcome to SSHAI!"
+  prompt: "%s@sshai.top> "
+  input_empty: "Please enter a message"
+  exit: "Goodbye!"
+  help: "Enter messages to chat with AI, type 'exit' to quit"
+  clear_context: "Conversation context cleared"
+
+# Command related
+cmd:
+  exit: "exit"
+  help: "help"
+  clear: "clear"
+  unknown: "Unknown command: %s"
+
+# Error messages
+error:
+  config_load: "Failed to load config: %v"
+  key_load: "Failed to load SSH key: %v"
+  server_start: "Failed to start server: %v"
+  connection: "Connection error: %v"
+  internal: "Internal error: %v"
+  lang_load: "Failed to load language pack: %v"
+  lang_not_found: "Language pack file not found: %s"
+
+# System messages
+system:
+  version: "SSHAI v1.0 - SSH AI Assistant"
+  project_url: "Project URL: https://github.com/your-repo/sshai"
+  config_file: "Config file: config.yaml"
