@@ -143,10 +143,7 @@ make dev-setup    # 开发环境设置
 ### 直接构建
 ```bash
 # 模块化版本
-go build -o sshai-modular cmd/main.go
-
-# 原版本（兼容性）
-go build -o sshai main.go
+go build -o sshai cmd/main.go
 ```
 
 ## 文件结构对比

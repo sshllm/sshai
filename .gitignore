@@ -6,3 +6,5 @@ dist
 server.log
 .git-local
 .git
+.git-github
+host_key.pem

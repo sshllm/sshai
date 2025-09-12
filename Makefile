@@ -2,7 +2,7 @@
 
 # 变量定义
 BINARY_NAME=sshai
-MODULAR_BINARY=sshai-modular
+MODULAR_BINARY=sshai
 CMD_DIR=cmd
 PKG_DIR=pkg
 CONFIG_FILE=config.yaml
@@ -17,23 +17,11 @@ build:
 	@echo "Building modular version..."
 	go build -o $(MODULAR_BINARY) $(CMD_DIR)/main.go
 
-# 构建原版本（兼容性）
-.PHONY: build-legacy
-build-legacy:
-	@echo "Building legacy version..."
-	go build -o $(BINARY_NAME) main.go
-
 # 运行模块化版本
 .PHONY: run
 run: build
 	@echo "Starting SSH AI Server (modular)..."
 	./$(MODULAR_BINARY)
-
-# 运行原版本
-.PHONY: run-legacy
-run-legacy: build-legacy
-	@echo "Starting SSH AI Server (legacy)..."
-	./$(BINARY_NAME)
 
 # 测试
 .PHONY: test

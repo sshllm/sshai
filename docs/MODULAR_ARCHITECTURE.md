@@ -212,13 +212,10 @@ make dev-setup
 
 ```bash
 # 构建模块化版本
-go build -o sshai-modular cmd/main.go
+go build -o sshai cmd/main.go
 
 # 构建原版本
 go build -o sshai main.go
-
-# 运行模块化版本
-./sshai-modular
 
 # 运行原版本
 ./sshai

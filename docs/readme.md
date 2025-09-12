@@ -33,13 +33,9 @@ gpt-5@sshai>
 make build
 
 # 或直接使用 go build
-go build -o sshai-modular cmd/main.go
+go build -o sshai cmd/main.go
 ```
 
-#### 原版本（兼容性）
-```bash
-go build -o sshai main.go
-```
 
 ### 2. 配置文件
 程序首次运行前，请确保 `config.yaml` 配置文件存在。默认配置：
@@ -74,13 +70,9 @@ security:
 make run
 
 # 或直接运行
-./sshai-modular
-```
-
-#### 原版本
-```bash
 ./sshai
 ```
+
 
 ### 4. 连接使用
 ```bash

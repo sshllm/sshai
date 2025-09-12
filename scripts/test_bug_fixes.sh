@@ -12,7 +12,7 @@ echo "5. ✅ 用户输入空白回车，并没有正确回车。用户输入exit
 echo ""
 
 echo "启动模块化版本服务器..."
-./sshai-modular &
+./sshai &
 SERVER_PID=$!
 
 echo "服务器已启动 (PID: $SERVER_PID)"
