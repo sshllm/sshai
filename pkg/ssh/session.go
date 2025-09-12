@@ -213,45 +213,161 @@ func refreshLine(channel ssh.Channel, inputState *InputState, prompt string) {
 	clearCurrentLine(channel, inputState, prompt)
 }
 
-// readStdinInput 尝试读取stdin输入
-func readStdinInput(channel ssh.Channel) (string, bool) {
-	// 使用goroutine和channel来实现超时读取
-	resultChan := make(chan string, 1)
-	errorChan := make(chan error, 1)
+// tryReadStdinInput 尝试读取stdin输入（仅在确认有管道输入时调用）
+func tryReadStdinInput(channel ssh.Channel) string {
+	// 使用单个goroutine和正确的退出机制
+	result := make(chan string, 1)
 
 	go func() {
-		buffer := make([]byte, 8192) // 增大缓冲区以支持较大文件
-		var content strings.Builder
+		var localContent strings.Builder
+		localBuffer := make([]byte, 8192)
+		localHasData := false
 
 		for {
+			n, err := channel.Read(localBuffer)
+
+			if err != nil {
+				// 检查是否是EOF
+				if err.Error() == "EOF" {
+					log.Printf("遇到EOF，读取结束")
+					break
+				}
+				// 其他错误
+				log.Printf("读取错误: %v", err)
+				break
+			}
+
+			if n > 0 {
+				localHasData = true
+				localContent.Write(localBuffer[:n])
+				log.Printf("读取到数据，长度: %d", n)
+
+				// 如果读取的数据小于缓冲区大小，可能已经读完
+				if n < len(localBuffer) {
+					log.Printf("数据读取完成")
+					break
+				}
+			} else {
+				// n == 0 且没有错误，表示没有更多数据
+				log.Printf("没有更多数据")
+				break
+			}
+		}
+
+		if localHasData {
+			result <- localContent.String()
+		} else {
+			result <- ""
+		}
+	}()
+
+	// 等待读取完成或超时
+	select {
+	case content := <-result:
+		log.Printf("读取完成，内容长度: %d", len(content))
+		return content
+	case <-time.After(2 * time.Second):
+		log.Printf("读取超时，没有检测到stdin数据")
+		return ""
+	}
+}
+
+// readAllStdinContent 读取所有stdin内容
+func readAllStdinContent(initialData []byte, channel ssh.Channel) string {
+	var content strings.Builder
+	content.Write(initialData)
+
+	// 继续读取剩余数据
+	buffer := make([]byte, 4096)
+	for {
+		// 使用短超时检查是否还有更多数据
+		done := make(chan int, 1)
+		errorChan := make(chan error, 1)
+
+		go func() {
 			n, err := channel.Read(buffer)
 			if err != nil {
 				errorChan <- err
 				return
 			}
+			done <- n
+		}()
 
+		select {
+		case n := <-done:
 			if n > 0 {
 				content.Write(buffer[:n])
 				// 如果读取的数据小于缓冲区大小，可能已经读完
 				if n < len(buffer) {
 					break
 				}
+			} else {
+				break
 			}
+		case <-errorChan:
+			break
+		case <-time.After(50 * time.Millisecond):
+			// 短超时，没有更多数据
+			break
 		}
-
-		resultChan <- content.String()
-	}()
-
-	// 等待结果或超时
-	select {
-	case result := <-resultChan:
-		return result, len(result) > 0
-	case <-errorChan:
-		return "", false
-	case <-time.After(300 * time.Millisecond):
-		// 超时，返回空结果
-		return "", false
 	}
+
+	return content.String()
+}
+
+// min 返回两个整数中的较小值
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// isTextContent 检测内容是否为纯文本
+func isTextContent(content string) bool {
+	// 检查是否包含大量二进制字符
+	binaryCount := 0
+	totalChars := len(content)
+
+	if totalChars == 0 {
+		return false
+	}
+
+	for _, b := range []byte(content) {
+		// 检查是否为控制字符（除了常见的换行、制表符等）
+		if b < 32 && b != 9 && b != 10 && b != 13 {
+			binaryCount++
+		}
+		// 检查是否为高位字节（可能是二进制数据）
+		if b > 127 {
+			// 对于UTF-8编码的中文等，这里需要更精确的检测
+			// 简单起见，我们允许一定比例的高位字节
+		}
+	}
+
+	// 如果二进制字符超过5%，认为不是纯文本
+	binaryRatio := float64(binaryCount) / float64(totalChars)
+	if binaryRatio > 0.05 {
+		return false
+	}
+
+	// 检查是否包含常见的二进制文件头
+	contentLower := strings.ToLower(content)
+	binaryHeaders := []string{
+		"\x89png",      // PNG
+		"\xff\xd8\xff", // JPEG
+		"pk\x03\x04",   // ZIP
+		"%pdf",         // PDF
+		"\x00\x00\x00", // 可能的二进制文件
+	}
+
+	for _, header := range binaryHeaders {
+		if strings.HasPrefix(contentLower, header) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // handleStdinCommand 处理通过stdin传入的内容
@@ -261,25 +377,24 @@ func handleStdinCommand(channel ssh.Channel, username, content string) {
 	cfg := config.Get()
 
 	// 显示接收到的内容信息
-	channel.Write([]byte(fmt.Sprintf("接收到输入内容（%d字符）\r\n", len(content))))
+	// channel.Write([]byte(fmt.Sprintf("接收到输入内容（%d字符）\r\n", len(content))))
 
-	// 获取并选择模型（简化版本，不显示加载过程）
-	models, err := ai.GetAvailableModels()
-	if err != nil {
-		log.Printf("获取模型失败: %v", err)
-		models = []ai.ModelInfo{{ID: cfg.API.DefaultModel}}
+	// 检查内容类型
+	if !isTextContent(content) {
+		channel.Write([]byte("错误：检测到非文本内容（如图片、PDF等二进制文件）\r\n"))
+		channel.Write([]byte("本系统仅支持处理纯文本内容，请确保输入的是文本文件。\r\n"))
+		channel.Write([]byte("支持的格式：.txt, .md, .log, .json, .yaml, .xml 等文本文件\r\n"))
+		return
 	}
 
-	// 根据用户名匹配模型（exec模式下不需要交互）
+	// 检查内容长度
+	if len(content) == 0 {
+		channel.Write([]byte("错误：输入内容为空\r\n"))
+		return
+	}
+
+	// 直接使用默认模型，不加载模型列表
 	selectedModel := cfg.API.DefaultModel
-
-	// 尝试根据用户名匹配模型
-	for _, model := range models {
-		if strings.Contains(strings.ToLower(username), strings.ToLower(model.ID)) {
-			selectedModel = model.ID
-			break
-		}
-	}
 
 	// 创建AI助手
 	assistant := ai.NewAssistant(username)
@@ -296,8 +411,8 @@ func handleStdinCommand(channel ssh.Channel, username, content string) {
 	}
 	prompt := fmt.Sprintf("%s\n\n%s", stdinPrompt, content)
 
-	// 直接处理内容并获取AI响应
-	assistant.ProcessMessage(prompt, channel, interrupt)
+	// 直接处理内容并获取AI响应，不显示动画效果
+	assistant.ProcessMessageWithOptions(prompt, channel, interrupt, false)
 }
 
 // HandleSession 处理SSH会话
@@ -306,6 +421,7 @@ func HandleSession(channel ssh.Channel, requests <-chan *ssh.Request, username s
 
 	var execCommand string
 	isExecMode := false
+	hasPty := false // 标记是否有伪终端
 	execReady := make(chan bool, 1)
 
 	// 处理会话请求
@@ -322,6 +438,7 @@ func HandleSession(channel ssh.Channel, requests <-chan *ssh.Request, username s
 					}
 				}
 			case "pty-req":
+				hasPty = true // 标记有伪终端
 				req.Reply(true, nil)
 			case "exec":
 				// 处理执行命令请求
@@ -351,20 +468,21 @@ func HandleSession(channel ssh.Channel, requests <-chan *ssh.Request, username s
 
 	cfg := config.Get()
 
-	// 检查是否有stdin输入（无论是exec还是shell模式）
-	stdinContent, hasStdin := readStdinInput(channel)
-
-	if hasStdin && stdinContent != "" {
-		// 如果有stdin输入，将其作为主要内容处理
-		log.Printf("检测到stdin输入，长度: %d", len(stdinContent))
-		handleStdinCommand(channel, username, stdinContent)
-		return
-	}
-
 	// 如果是执行模式且有命令，处理exec命令
 	if isExec && execCommand != "" {
 		handleExecCommand(channel, username, execCommand)
 		return
+	}
+
+	// 如果没有伪终端，很可能是管道输入模式
+	if !hasPty {
+		log.Printf("检测到非PTY连接，尝试读取stdin输入")
+		stdinContent := tryReadStdinInput(channel)
+		if len(stdinContent) > 0 {
+			log.Printf("读取到stdin内容，长度: %d", len(stdinContent))
+			handleStdinCommand(channel, username, stdinContent)
+			return
+		}
 	}
 
 	// 发送登录成功消息（无论是否需要密码认证）
@@ -413,25 +531,10 @@ func handleExecCommand(channel ssh.Channel, username, command string) {
 	cfg := config.Get()
 
 	// 显示执行的命令
-	channel.Write([]byte(fmt.Sprintf("执行命令: %s\r\n\r\n", command)))
+	// channel.Write([]byte(fmt.Sprintf("执行命令: %s\r\n\r\n", command)))
 
-	// 获取并选择模型（简化版本，不显示加载过程）
-	models, err := ai.GetAvailableModels()
-	if err != nil {
-		log.Printf("获取模型失败: %v", err)
-		models = []ai.ModelInfo{{ID: cfg.API.DefaultModel}}
-	}
-
-	// 根据用户名匹配模型（exec模式下不需要交互）
+	// 直接使用默认模型，不加载模型列表
 	selectedModel := cfg.API.DefaultModel
-
-	// 尝试根据用户名匹配模型
-	for _, model := range models {
-		if strings.Contains(strings.ToLower(username), strings.ToLower(model.ID)) {
-			selectedModel = model.ID
-			break
-		}
-	}
 
 	// 创建AI助手
 	assistant := ai.NewAssistant(username)
@@ -448,8 +551,8 @@ func handleExecCommand(channel ssh.Channel, username, command string) {
 	}
 	fullPrompt := fmt.Sprintf("%s\n\n%s", execPrompt, command)
 
-	// 直接处理命令并获取AI响应
-	assistant.ProcessMessage(fullPrompt, channel, interrupt)
+	// 直接处理命令并获取AI响应，不显示动画效果
+	assistant.ProcessMessageWithOptions(fullPrompt, channel, interrupt, false)
 
 	// 添加换行符结束
 	channel.Write([]byte("\r\n"))

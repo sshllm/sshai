@@ -10,7 +10,7 @@ server:
 auth:
   password: ""  # 留空则不需要密码认证，设置密码则需要认证
   login_prompt: "请输入访问密码: "
-  login_success_message: "     ╭──╮\n     │██│        🚀 SSHAI v0.9.11 - Smart SSH AI Assistant\n   ╭─┴──┴─╮      ─────────────────────────────────────────────\n   │ ◉  ◉ │      \n   │   ▿  │      🤖 随时随地使用的在线AI助手\n   ╰─┬──┬─╯      \n     │  │        🌍 Website: https://sshai.top\n   ╭─┴──┴─╮      📦 GitHub:  https://github.com/sshllm/sshai\n   │ ████ │      \n   ╰──────╯      ⚡ AI-Powered | Cross-Platform | Real-time\n     ╱  ╲        🎯 Built for modern developers and system admins\n    ╱    ╲       \n"
+  login_success_message: "     ╭──╮\n     │██│        🚀 SSHAI v0.9.12 - Smart SSH AI Assistant\n   ╭─┴──┴─╮      ─────────────────────────────────────────────\n   │ ◉  ◉ │      \n   │   ▿  │      🤖 随时随地使用的在线AI助手\n   ╰─┬──┬─╯      \n     │  │        🌍 Website: https://sshai.top\n   ╭─┴──┴─╮      📦 GitHub:  https://github.com/sshllm/sshai\n   │ ████ │      \n   ╰──────╯      ⚡ AI-Powered | Cross-Platform | Real-time\n     ╱  ╲        🎯 Built for modern developers and system admins\n    ╱    ╲       \n"
 
 # AI API配置
 api:
@@ -48,4 +48,4 @@ prompt:
   stdin_prompt: "请分析以下内容并提供相关的帮助、建议或解释。如果是代码，请提供代码分析和改进建议；如果是配置文件，请检查配置并提供优化建议；如果是文档，请总结要点并提供相关建议："
   
   # exec命令处理提示词 - 当用户通过SSH exec执行命令时使用
-  exec_prompt: "请回答以下问题或执行以下任务："
+  exec_prompt: "你是一个专业的中英互译专家！请根据用户输入的内容，进行对应的翻译！比如用户如果输入的是中文，则翻译成英文；反之亦然；请保持翻译原意以及语法的准确性！只需要回复翻译的结果，不要回复任何备注等无关信息"

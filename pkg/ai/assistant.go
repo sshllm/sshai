@@ -56,14 +56,22 @@ func (ai *Assistant) ClearContext() {
 
 // ProcessMessage 处理用户消息
 func (ai *Assistant) ProcessMessage(input string, channel ssh.Channel, interrupt chan bool) {
+	ai.ProcessMessageWithOptions(input, channel, interrupt, true)
+}
+
+func (ai *Assistant) ProcessMessageWithOptions(input string, channel ssh.Channel, interrupt chan bool, showAnimation bool) {
 	// 添加用户消息到上下文
 	ai.messages = append(ai.messages, models.ChatMessage{
 		Role:    "user",
 		Content: input,
 	})
 
-	// 调用AI API
-	ai.callAIAPIWithLoading(channel, interrupt)
+	// 调用AI API，根据参数决定是否显示动画
+	if showAnimation {
+		ai.callAIAPIWithLoading(channel, interrupt)
+	} else {
+		ai.callAIAPIWithoutLoading(channel, interrupt)
+	}
 }
 
 // callAIAPIWithLoading 带加载动画的AI API调用
@@ -71,10 +79,56 @@ func (ai *Assistant) callAIAPIWithLoading(channel ssh.Channel, interrupt chan bo
 	stopLoading := make(chan bool, 1)
 
 	// 启动加载动画
-	go ai.showLoadingAnimation(channel, stopLoading)
+	// go ai.showLoadingAnimation(channel, stopLoading)
 
 	// 调用AI API
 	ai.callAIAPI(channel, stopLoading, interrupt)
+}
+
+// callAIAPIWithoutLoading 不带加载动画的AI API调用
+func (ai *Assistant) callAIAPIWithoutLoading(channel ssh.Channel, interrupt chan bool) {
+	// 直接调用AI API，不显示动画
+	ai.callAIAPIDirectly(channel, interrupt)
+}
+
+// callAIAPIDirectly 直接调用AI API，不显示加载动画
+func (ai *Assistant) callAIAPIDirectly(channel ssh.Channel, interrupt chan bool) {
+	cfg := config.Get()
+
+	// 构建请求数据
+	requestData := map[string]interface{}{
+		"model":    ai.currentModel,
+		"messages": ai.messages,
+		"stream":   true,
+	}
+
+	jsonData, err := json.Marshal(requestData)
+	if err != nil {
+		channel.Write([]byte(fmt.Sprintf("构建请求失败: %v\r\n", err)))
+		return
+	}
+
+	// 创建HTTP请求
+	req, err := http.NewRequest("POST", cfg.API.BaseURL+"/chat/completions", bytes.NewBuffer(jsonData))
+	if err != nil {
+		channel.Write([]byte(fmt.Sprintf("创建请求失败: %v\r\n", err)))
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+cfg.API.APIKey)
+
+	// 发送请求
+	client := &http.Client{Timeout: time.Duration(cfg.API.Timeout) * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		channel.Write([]byte(fmt.Sprintf("请求失败: %v\r\n", err)))
+		return
+	}
+	defer resp.Body.Close()
+
+	// 直接处理流式响应，不显示加载动画
+	ai.handleStreamResponse(resp, channel, interrupt)
 }
 
 // showLoadingAnimation 显示加载动画
@@ -89,7 +143,7 @@ func (ai *Assistant) showLoadingAnimation(channel ssh.Channel, stop chan bool) {
 	for {
 		select {
 		case <-stop:
-			// 清除加载动画
+			// 清除加载动画（只清除当前行，不影响其他内容）
 			channel.Write([]byte("\r" + strings.Repeat(" ", 20) + "\r"))
 			return
 		case <-ticker.C:
@@ -256,10 +310,9 @@ func (ai *Assistant) handleStreamResponse(resp *http.Response, channel ssh.Chann
 							isThinking = true
 							thinkingStartTime = time.Now()
 
-							// 停止加载动画（如果还在运行）
-							// 显示思考开始信息
-							channel.Write([]byte("\r" + strings.Repeat(" ", 30) + "\r"))
+							// 显示思考开始信息（不清除屏幕，避免内容丢失）
 							channel.Write([]byte(i18n.T("ai.thinking_process") + "\r\n"))
+							// channel.Write([]byte("\r\n" + i18n.T("ai.thinking_process") + "\r\n"))
 						}
 
 						// 实时显示思考内容 - 直接输出，不处理
@@ -270,18 +323,19 @@ func (ai *Assistant) handleStreamResponse(resp *http.Response, channel ssh.Chann
 						}
 					}
 
-					// 处理正常回答内容 - 关键修复：直接输出，不进行任何处理
+					// 处理正常回答内容 - 修复：先处理思考结束，再输出内容
 					if delta.Content != "" {
 						if isThinking {
-							// 思考阶段结束
+							// 思考阶段结束，先显示完成信息
 							thinkingDuration := time.Since(thinkingStartTime)
 							// 显示思考完成信息
-							channel.Write([]byte(fmt.Sprintf("\r\n\n%s\r\n\n", i18n.T("ai.thinking_complete", thinkingDuration.Seconds()))))
+							// channel.Write([]byte(fmt.Sprintf("\r\n\n%s\r\n\n", i18n.T("ai.thinking_complete", thinkingDuration.Seconds()))))
+							channel.Write([]byte(fmt.Sprintf("\r\n%s\r\n\n", i18n.T("ai.thinking_complete", thinkingDuration.Seconds()))))
 							channel.Write([]byte(i18n.T("ai.response") + "\r\n"))
 							isThinking = false
 						}
 
-						// 直接输出内容，不进行任何过滤或处理
+						// 然后输出当前的内容（包括第一个delta.Content）
 						content := delta.Content
 						// 只转换换行符
 						content = strings.ReplaceAll(content, "\n", "\r\n")
