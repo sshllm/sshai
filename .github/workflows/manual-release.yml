@@ -102,7 +102,7 @@ jobs:
         3. Connect via SSH: ssh user@localhost -p 2213
 
         For detailed documentation, visit:
-        https://github.com/sshai/sshai
+        https://github.com/sshllm/sshai
 
         License: Apache 2.0
         EOF
@@ -152,8 +152,8 @@ jobs:
 
         ## 📚 Documentation
 
-        - [中文文档](https://github.com/sshai/sshai/blob/main/README.md)
-        - [English Documentation](https://github.com/sshai/sshai/blob/main/README_EN.md)
+        - [中文文档](https://github.com/sshllm/sshai/blob/main/README.md)
+        - [English Documentation](https://github.com/sshllm/sshai/blob/main/README_EN.md)
 
         ## 🔐 Verification
 
@@ -161,7 +161,7 @@ jobs:
 
         ## 🐛 Issues & Support
 
-        Report issues: [GitHub Issues](https://github.com/sshai/sshai/issues)
+        Report issues: [GitHub Issues](https://github.com/sshllm/sshai/issues)
         EOF
 
     - name: Create Release

@@ -148,7 +148,7 @@ Quick Start:
 3. Connect via SSH: ssh user@localhost -p 2213
 
 For detailed documentation, visit:
-https://github.com/sshai/sshai
+https://github.com/sshllm/sshai
 
 License: Apache 2.0
 EOF

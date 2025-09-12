@@ -117,7 +117,7 @@ jobs:
         - api.base_url: AI API base URL
         - language: Interface language (zh-cn or en-us)
 
-        For more information: https://github.com/sshai/sshai
+        For more information: https://github.com/sshllm/sshai
         EOF
         
         # Create archive
@@ -200,9 +200,9 @@ jobs:
         4. Run the binary to start the SSH AI service
 
         ## 📖 Documentation
-        - [README (中文)](https://github.com/sshai/sshai/blob/main/README.md)
-        - [README (English)](https://github.com/sshai/sshai/blob/main/README_EN.md)
-        - [Configuration Guide](https://github.com/sshai/sshai/blob/main/docs/CONFIG_GUIDE.md)
+        - [README (中文)](https://github.com/sshllm/sshai/blob/main/README.md)
+        - [README (English)](https://github.com/sshllm/sshai/blob/main/README_EN.md)
+        - [Configuration Guide](https://github.com/sshllm/sshai/blob/main/docs/CONFIG_GUIDE.md)
 
         ## 🔧 Quick Start
         \`\`\`bash
@@ -221,7 +221,7 @@ jobs:
         \`\`\`
 
         ## 🐛 Bug Reports
-        If you encounter any issues, please report them on our [GitHub Issues](https://github.com/sshai/sshai/issues) page.
+        If you encounter any issues, please report them on our [GitHub Issues](https://github.com/sshllm/sshai/issues) page.
         EOF
 
     - name: Create Release
