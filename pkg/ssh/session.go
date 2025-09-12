@@ -485,15 +485,13 @@ func HandleSession(channel ssh.Channel, requests <-chan *ssh.Request, username s
 		}
 	}
 
-	// 发送登录成功消息（无论是否需要密码认证）
-	if cfg.Auth.LoginSuccessMsg != "" {
-		// 处理多行消息的换行
-		lines := strings.Split(cfg.Auth.LoginSuccessMsg, "\n")
-		for _, line := range lines {
-			channel.Write([]byte(line + "\r\n"))
-		}
-		channel.Write([]byte("\r\n")) // 额外的空行分隔
+	// 发送登录成功消息（使用共享的banner常量）
+	// 处理多行消息的换行
+	lines := strings.Split(config.WelcomeBanner, "\n")
+	for _, line := range lines {
+		channel.Write([]byte(line + "\r\n"))
 	}
+	channel.Write([]byte("\r\n")) // 额外的空行分隔
 
 	// 发送欢迎消息
 	if username != "" {
