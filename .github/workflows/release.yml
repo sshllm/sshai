@@ -1,0 +1,238 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+env:
+  PROJECT_NAME: sshai
+
+jobs:
+  build:
+    name: Build for multiple platforms
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: ""
+          - goos: linux
+            goarch: arm64
+            suffix: ""
+          - goos: darwin
+            goarch: amd64
+            suffix: ""
+          - goos: darwin
+            goarch: arm64
+            suffix: ""
+          - goos: windows
+            goarch: amd64
+            suffix: ".exe"
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.22'
+
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+        echo "BUILD_TIME=$(date +%Y%m%d_%H%M%S)" >> $GITHUB_OUTPUT
+
+    - name: Check language files
+      run: |
+        if [ ! -f "pkg/i18n/lang/lang-zh-cn.yaml" ]; then
+          echo "Warning: Chinese language file not found, creating placeholder"
+          mkdir -p pkg/i18n/lang
+          echo "# Chinese language pack" > pkg/i18n/lang/lang-zh-cn.yaml
+        fi
+        if [ ! -f "pkg/i18n/lang/lang-en-us.yaml" ]; then
+          echo "Warning: English language file not found, creating placeholder"
+          mkdir -p pkg/i18n/lang
+          echo "# English language pack" > pkg/i18n/lang/lang-en-us.yaml
+        fi
+
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+      run: |
+        OUTPUT_NAME="${PROJECT_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.suffix }}"
+        go build \
+          -ldflags "-X main.version=${{ steps.version.outputs.VERSION }} -s -w" \
+          -o "build/${OUTPUT_NAME}" \
+          cmd/main.go
+        echo "BINARY_NAME=${OUTPUT_NAME}" >> $GITHUB_ENV
+
+    - name: Create release package
+      run: |
+        DIST_DIR="dist/${PROJECT_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}"
+        mkdir -p "$DIST_DIR"
+        
+        # Copy binary
+        cp "build/${BINARY_NAME}" "$DIST_DIR/"
+        
+        # Copy config file
+        cp config.yaml "$DIST_DIR/"
+        
+        # Create README
+        cat > "$DIST_DIR/README.txt" << EOF
+        SSHAI - SSH AI Assistant (Embedded Language Pack Version)
+        Version: ${{ steps.version.outputs.VERSION }}
+        Platform: ${{ matrix.goos }}/${{ matrix.goarch }}
+        Build Time: ${{ steps.version.outputs.BUILD_TIME }}
+
+        Deployment Instructions:
+        1. Copy ${BINARY_NAME} and config.yaml to your target server
+        2. Modify config.yaml as needed
+        3. Run ./${BINARY_NAME} to start the service
+
+        Note: This version has language packs embedded in the binary, no additional language files needed.
+
+        Configuration:
+        - server.host: Server listening address
+        - server.port: Server listening port
+        - api.base_url: AI API base URL
+        - language: Interface language (zh-cn or en-us)
+
+        For more information: https://github.com/sshai/sshai
+        EOF
+        
+        # Create archive
+        cd dist
+        zip -r "${PROJECT_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}_${{ steps.version.outputs.VERSION }}.zip" "${PROJECT_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}/"
+        cd ..
+        
+        echo "ARCHIVE_NAME=${PROJECT_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}_${{ steps.version.outputs.VERSION }}.zip" >> $GITHUB_ENV
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.PROJECT_NAME }}_${{ matrix.goos }}_${{ matrix.goarch }}
+        path: |
+          build/${{ env.BINARY_NAME }}
+          dist/${{ env.ARCHIVE_NAME }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+
+    - name: Prepare release assets
+      run: |
+        mkdir -p release_assets
+        find artifacts -name "*.zip" -exec cp {} release_assets/ \;
+        ls -la release_assets/
+
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        cat > release_notes.md << EOF
+        # SSHAI ${{ steps.version.outputs.VERSION }} Release
+
+        ## 🚀 Features
+        - SSH AI Assistant with embedded language packs
+        - Multi-platform support (Linux, macOS, Windows)
+        - Support for multiple AI models (DeepSeek, Hunyuan, etc.)
+        - Real-time thinking display for compatible models
+        - Configurable prompts and authentication
+        - Beautiful interface with colors and animations
+
+        ## 📦 Downloads
+        Choose the appropriate package for your platform:
+
+        ### Linux
+        - **Linux AMD64**: \`sshai_linux_amd64_${{ steps.version.outputs.VERSION }}.zip\`
+        - **Linux ARM64**: \`sshai_linux_arm64_${{ steps.version.outputs.VERSION }}.zip\`
+
+        ### macOS
+        - **macOS Intel**: \`sshai_darwin_amd64_${{ steps.version.outputs.VERSION }}.zip\`
+        - **macOS Apple Silicon**: \`sshai_darwin_arm64_${{ steps.version.outputs.VERSION }}.zip\`
+
+        ### Windows
+        - **Windows AMD64**: \`sshai_windows_amd64_${{ steps.version.outputs.VERSION }}.zip\`
+
+        ## 🛠️ Installation
+        1. Download the appropriate package for your platform
+        2. Extract the archive
+        3. Configure \`config.yaml\` with your API keys
+        4. Run the binary to start the SSH AI service
+
+        ## 📖 Documentation
+        - [README (中文)](https://github.com/sshai/sshai/blob/main/README.md)
+        - [README (English)](https://github.com/sshai/sshai/blob/main/README_EN.md)
+        - [Configuration Guide](https://github.com/sshai/sshai/blob/main/docs/CONFIG_GUIDE.md)
+
+        ## 🔧 Quick Start
+        \`\`\`bash
+        # Extract and configure
+        unzip sshai_linux_amd64_${{ steps.version.outputs.VERSION }}.zip
+        cd sshai_linux_amd64
+        
+        # Edit config.yaml with your API key
+        nano config.yaml
+        
+        # Start the service
+        ./sshai_linux_amd64
+        
+        # Connect from another terminal
+        ssh user@localhost -p 2213
+        \`\`\`
+
+        ## 🐛 Bug Reports
+        If you encounter any issues, please report them on our [GitHub Issues](https://github.com/sshai/sshai/issues) page.
+        EOF
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.VERSION }}
+        name: SSHAI ${{ steps.version.outputs.VERSION }}
+        body_path: release_notes.md
+        files: release_assets/*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update latest release info
+      run: |
+        echo "✅ Release ${{ steps.version.outputs.VERSION }} created successfully!"
+        echo "📦 Assets uploaded:"
+        ls -la release_assets/

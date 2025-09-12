@@ -1,0 +1,83 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PROJECT_NAME: sshai
+
+jobs:
+  test:
+    name: Test and Build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Verify dependencies
+      run: go mod verify
+
+    - name: Check language files
+      run: |
+        if [ ! -f "pkg/i18n/lang/lang-zh-cn.yaml" ]; then
+          echo "Creating placeholder Chinese language file"
+          mkdir -p pkg/i18n/lang
+          echo "# Chinese language pack" > pkg/i18n/lang/lang-zh-cn.yaml
+        fi
+        if [ ! -f "pkg/i18n/lang/lang-en-us.yaml" ]; then
+          echo "Creating placeholder English language file"
+          mkdir -p pkg/i18n/lang
+          echo "# English language pack" > pkg/i18n/lang/lang-en-us.yaml
+        fi
+
+    - name: Run tests
+      run: |
+        if [ -f "go.mod" ]; then
+          if go list ./... | grep -q .; then
+            go test -v ./...
+          else
+            echo "No tests found, skipping test execution"
+          fi
+        fi
+
+    - name: Build for Linux AMD64
+      run: |
+        mkdir -p build
+        go build -ldflags "-s -w" -o build/sshai_linux_amd64 cmd/main.go
+
+    - name: Build for multiple platforms
+      run: |
+        GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o build/sshai_darwin_amd64 cmd/main.go
+        GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o build/sshai_windows_amd64.exe cmd/main.go
+
+    - name: Check binary size
+      run: |
+        echo "Binary sizes:"
+        ls -lh build/
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ci-build-${{ github.sha }}
+        path: build/
+        retention-days: 7

@@ -1,0 +1,184 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+      draft:
+        description: 'Create as draft'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PROJECT_NAME: sshai
+
+jobs:
+  manual-build-and-release:
+    name: Manual Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Validate version format
+      run: |
+        if [[ ! "${{ github.event.inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+          echo "Error: Version must be in format v1.0.0 or v1.0.0-beta"
+          exit 1
+        fi
+
+    - name: Check language files
+      run: |
+        if [ ! -f "pkg/i18n/lang/lang-zh-cn.yaml" ]; then
+          echo "Creating placeholder Chinese language file"
+          mkdir -p pkg/i18n/lang
+          echo "# Chinese language pack" > pkg/i18n/lang/lang-zh-cn.yaml
+        fi
+        if [ ! -f "pkg/i18n/lang/lang-en-us.yaml" ]; then
+          echo "Creating placeholder English language file"
+          mkdir -p pkg/i18n/lang
+          echo "# English language pack" > pkg/i18n/lang/lang-en-us.yaml
+        fi
+
+    - name: Build all platforms
+      run: |
+        mkdir -p build dist
+        
+        platforms=(
+          "linux/amd64"
+          "linux/arm64"
+          "darwin/amd64"
+          "darwin/arm64"
+          "windows/amd64"
+        )
+        
+        for platform in "${platforms[@]}"; do
+          IFS='/' read -r GOOS GOARCH <<< "$platform"
+          
+          echo "Building for $GOOS/$GOARCH..."
+          
+          output_name="${PROJECT_NAME}_${GOOS}_${GOARCH}"
+          if [ "$GOOS" = "windows" ]; then
+            output_name="${output_name}.exe"
+          fi
+          
+          GOOS=$GOOS GOARCH=$GOARCH go build \
+            -ldflags "-X main.version=${{ github.event.inputs.version }} -s -w" \
+            -o "build/${output_name}" \
+            cmd/main.go
+          
+          # Create distribution package
+          dist_dir="dist/${PROJECT_NAME}_${GOOS}_${GOARCH}"
+          mkdir -p "$dist_dir"
+          
+          cp "build/${output_name}" "$dist_dir/"
+          cp config.yaml "$dist_dir/"
+          
+          # Create README for this platform
+          cat > "$dist_dir/README.txt" << EOF
+        SSHAI - SSH AI Assistant
+        Version: ${{ github.event.inputs.version }}
+        Platform: ${GOOS}/${GOARCH}
+        Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+        Quick Start:
+        1. Edit config.yaml with your API configuration
+        2. Run ./${output_name} to start the service
+        3. Connect via SSH: ssh user@localhost -p 2213
+
+        For detailed documentation, visit:
+        https://github.com/sshai/sshai
+
+        License: Apache 2.0
+        EOF
+          
+          # Create archive
+          cd dist
+          zip -r "${PROJECT_NAME}_${GOOS}_${GOARCH}_${{ github.event.inputs.version }}.zip" "${PROJECT_NAME}_${GOOS}_${GOARCH}/"
+          cd ..
+        done
+
+    - name: Generate checksums
+      run: |
+        cd dist
+        sha256sum *.zip > checksums.txt
+        echo "Generated checksums:"
+        cat checksums.txt
+
+    - name: Create release notes
+      run: |
+        cat > release_notes.md << EOF
+        # 🚀 SSHAI ${{ github.event.inputs.version }}
+
+        ## What's New
+        - SSH AI Assistant with embedded language support
+        - Cross-platform compatibility (Linux, macOS, Windows)
+        - Multiple AI model support (DeepSeek, Hunyuan, etc.)
+        - Configurable authentication and prompts
+        - Real-time AI thinking display
+
+        ## 📥 Download
+
+        | Platform | Architecture | Download |
+        |----------|--------------|----------|
+        | Linux | AMD64 | sshai_linux_amd64_${{ github.event.inputs.version }}.zip |
+        | Linux | ARM64 | sshai_linux_arm64_${{ github.event.inputs.version }}.zip |
+        | macOS | Intel | sshai_darwin_amd64_${{ github.event.inputs.version }}.zip |
+        | macOS | Apple Silicon | sshai_darwin_arm64_${{ github.event.inputs.version }}.zip |
+        | Windows | AMD64 | sshai_windows_amd64_${{ github.event.inputs.version }}.zip |
+
+        ## 🔧 Installation
+
+        1. Download the appropriate package for your platform
+        2. Extract the archive
+        3. Configure your API keys in config.yaml
+        4. Run the binary to start the service
+        5. Connect via SSH: ssh user@localhost -p 2213
+
+        ## 📚 Documentation
+
+        - [中文文档](https://github.com/sshai/sshai/blob/main/README.md)
+        - [English Documentation](https://github.com/sshai/sshai/blob/main/README_EN.md)
+
+        ## 🔐 Verification
+
+        Verify your download with SHA256 checksums in checksums.txt
+
+        ## 🐛 Issues & Support
+
+        Report issues: [GitHub Issues](https://github.com/sshai/sshai/issues)
+        EOF
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.event.inputs.version }}
+        name: SSHAI ${{ github.event.inputs.version }}
+        body_path: release_notes.md
+        files: |
+          dist/*.zip
+          dist/checksums.txt
+        draft: ${{ github.event.inputs.draft }}
+        prerelease: ${{ github.event.inputs.prerelease }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Summary
+      run: |
+        echo "🎉 Release ${{ github.event.inputs.version }} created successfully!"
+        echo "📦 Packages built for all platforms"
