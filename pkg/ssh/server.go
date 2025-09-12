@@ -80,7 +80,7 @@ func (s *Server) Start() error {
 	defer listener.Close()
 
 	log.Printf("SSH AI Server listening on port %s", cfg.Server.Port)
-	log.Printf("Connect with: ssh gpt-5@localhost -p %s", cfg.Server.Port)
+	log.Printf("Connect with: ssh localhost -p %s", cfg.Server.Port)
 
 	// 接受连接
 	for {

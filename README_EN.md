@@ -11,9 +11,10 @@ An intelligent AI assistant program that provides AI model services through SSH 
 - 🤖 **Multi-Model Support** - Support for DeepSeek, Hunyuan, and other AI models
 - 💭 **Real-time Thinking Display** - Real-time display of thinking processes for models like DeepSeek R1
 - 🎨 **Beautiful Interface** - Colorful output, animations, and ASCII art
-- ⚙️ **Flexible Configuration** - Complete YAML configuration file support
+- ⚙️ **Flexible Configuration** - Support for dynamic configuration file specification (-c parameter) and complete YAML configuration
 - 🌐 **Multi-language Support** - Support for Chinese and English interfaces
 - 📝 **Custom Prompts** - Configurable AI prompt system
+- 🚀 **Startup Welcome Banner** - Beautiful welcome banner displayed on program startup
 - 🏗️ **Modular Design** - Clean code architecture, easy to extend
 
 ## 🚀 Quick Start
@@ -50,9 +51,7 @@ server:
 # Authentication Configuration (Optional)
 auth:
   password: ""  # Empty = no password authentication
-  login_success_message: |
-    🎉 Authentication successful! Welcome to SSHAI
-    📖 Project: https://github.com/sshllm/sshai
+  login_prompt: "Please enter password: "
 
 # Custom Prompt Configuration
 prompt:
@@ -64,14 +63,31 @@ prompt:
 ### 3. Run the Server
 
 ```bash
-# Run directly
+# Run directly (using default config.yaml)
 ./sshai
+
+# Specify configuration file
+./sshai -c config.yaml
+./sshai -c /path/to/your/config.yaml
 
 # Run in background
 ./sshai > server.log 2>&1 &
 
 # Run with script
 ./scripts/run.sh
+```
+
+#### Command Line Parameters
+
+- `-c <config_file>` - Specify configuration file path
+  - If not specified, defaults to `config.yaml` in current directory
+  - If configuration file doesn't exist, program will show error message and exit
+
+```bash
+# Usage examples
+./sshai -c config.yaml              # Use config file in current directory
+./sshai -c /etc/sshai/config.yaml   # Use config file with absolute path
+./sshai                             # Default to config.yaml
 ```
 
 ### 4. Connect and Use
@@ -143,10 +159,9 @@ api_endpoints:
 auth:
   password: "your-secure-password"  # Set access password
   login_prompt: "Please enter password: "
-  login_success_message: |
-    🎉 Authentication successful!
-    Welcome to SSHAI AI Assistant
 ```
+
+**Note**: After successful login, the program will automatically display built-in welcome information, no need to configure in the config file.
 
 ### Prompt Configuration
 

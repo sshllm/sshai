@@ -19,9 +19,10 @@ ssh test.sshai.top -p 9527
 - 🤖 **多模型支持** - 支持DeepSeek、Hunyuan等多种AI模型
 - 💭 **实时思考显示** - 支持DeepSeek R1等模型的思考过程实时展示
 - 🎨 **美观界面** - 彩色输出、动画效果和ASCII艺术
-- ⚙️ **灵活配置** - 完整的YAML配置文件支持
+- ⚙️ **灵活配置** - 支持动态指定配置文件（-c参数）和完整的YAML配置
 - 🌐 **多语言支持** - 支持中文和英文界面
 - 📝 **自定义提示词** - 可配置的AI提示词系统
+- 🚀 **启动欢迎页** - 程序启动时显示美观的欢迎banner
 - 🏗️ **模块化设计** - 清晰的代码架构，易于扩展
 
 ## 🚀 快速开始
@@ -58,9 +59,7 @@ server:
 # 认证配置（可选）
 auth:
   password: ""  # 留空=无密码认证
-  login_success_message: |
-    🎉 认证成功！欢迎使用 SSHAI
-    📖 项目地址: https://github.com/sshllm/sshai
+  login_prompt: "请输入访问密码: "
 
 # 自定义提示词配置
 prompt:
@@ -72,14 +71,31 @@ prompt:
 ### 3. 运行服务器
 
 ```bash
-# 直接运行
+# 直接运行（使用默认配置文件 config.yaml）
 ./sshai
+
+# 指定配置文件运行
+./sshai -c config.yaml
+./sshai -c /path/to/your/config.yaml
 
 # 后台运行
 ./sshai > server.log 2>&1 &
 
 # 使用脚本运行
 ./scripts/run.sh
+```
+
+#### 命令行参数
+
+- `-c <config_file>` - 指定配置文件路径
+  - 如果不指定，默认使用当前目录下的 `config.yaml`
+  - 如果配置文件不存在，程序会显示错误提示并退出
+
+```bash
+# 使用示例
+./sshai -c config.yaml          # 使用当前目录的配置文件
+./sshai -c /etc/sshai/config.yaml  # 使用绝对路径的配置文件
+./sshai                         # 默认使用 config.yaml
 ```
 
 ### 4. 连接使用
@@ -151,10 +167,9 @@ api_endpoints:
 auth:
   password: "your-secure-password"  # 设置访问密码
   login_prompt: "请输入访问密码: "
-  login_success_message: |
-    🎉 认证成功！
-    欢迎使用 SSHAI AI 助手
 ```
+
+**注意**: 登录成功后会自动显示程序内置的欢迎信息，无需在配置文件中设置。
 
 ### 提示词配置
 
