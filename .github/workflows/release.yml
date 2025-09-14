@@ -95,7 +95,7 @@ jobs:
         cp "build/${BINARY_NAME}" "$DIST_DIR/"
         
         # Copy config file
-        cp config.yaml "$DIST_DIR/"
+        cp config.yaml.example "$DIST_DIR/"
         
         # Create README
         cat > "$DIST_DIR/README.txt" << EOF
@@ -105,8 +105,8 @@ jobs:
         Build Time: ${{ steps.version.outputs.BUILD_TIME }}
 
         Deployment Instructions:
-        1. Copy ${BINARY_NAME} and config.yaml to your target server
-        2. Modify config.yaml as needed
+        1. Copy ${BINARY_NAME} and config.yaml.example to your target server
+        2. Modify config.yaml.example as needed
         3. Run ./${BINARY_NAME} to start the service
 
         Note: This version has language packs embedded in the binary, no additional language files needed.
@@ -196,7 +196,7 @@ jobs:
         ## 🛠️ Installation
         1. Download the appropriate package for your platform
         2. Extract the archive
-        3. Configure \`config.yaml\` with your API keys
+        3. Configure \`config.yaml.example\` with your API keys
         4. Run the binary to start the SSH AI service
 
         ## 📖 Documentation
@@ -210,8 +210,8 @@ jobs:
         unzip sshai_linux_amd64_${{ steps.version.outputs.VERSION }}.zip
         cd sshai_linux_amd64
         
-        # Edit config.yaml with your API key
-        nano config.yaml
+        # Edit config.yaml.example with your API key
+        nano config.yaml.example
         
         # Start the service
         ./sshai_linux_amd64

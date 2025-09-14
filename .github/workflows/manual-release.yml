@@ -87,7 +87,7 @@ jobs:
           mkdir -p "$dist_dir"
           
           cp "build/${output_name}" "$dist_dir/"
-          cp config.yaml "$dist_dir/"
+          cp config.yaml.example "$dist_dir/"
           
           # Create README for this platform
           cat > "$dist_dir/README.txt" << EOF
@@ -97,7 +97,7 @@ jobs:
         Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
         Quick Start:
-        1. Edit config.yaml with your API configuration
+        1. Edit config.yaml.example with your API configuration
         2. Run ./${output_name} to start the service
         3. Connect via SSH: ssh user@localhost -p 2213
 
@@ -146,7 +146,7 @@ jobs:
 
         1. Download the appropriate package for your platform
         2. Extract the archive
-        3. Configure your API keys in config.yaml
+        3. Configure your API keys in config.yaml.example
         4. Run the binary to start the service
         5. Connect via SSH: ssh user@localhost -p 2213
 

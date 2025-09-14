@@ -87,7 +87,7 @@ git push origin v1.0.0
 
 每个ZIP包包含：
 - 对应平台的可执行文件
-- `config.yaml` 配置文件
+- `config.yaml.example` 配置文件
 - `README.txt` 使用说明
 
 ## 🔧 配置要求
