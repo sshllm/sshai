@@ -559,10 +559,11 @@ func handleExecCommand(channel ssh.Channel, username, command string) {
 // handleUserInput 处理用户输入
 func handleUserInput(channel ssh.Channel, assistant *ai.Assistant, dynamicPrompt string) {
 	buffer := make([]byte, 1024)
-	interrupt := make(chan bool, 1)
 	history := NewCommandHistory()
 	inputState := NewInputState()
-	var escapeSequence []byte // 用于处理ANSI转义序列
+	var escapeSequence []byte      // 用于处理ANSI转义序列
+	var currentInterrupt chan bool // 当前正在使用的中断通道
+	var isProcessing bool          // 标记是否正在处理AI请求
 
 	for {
 		n, err := channel.Read(buffer)
@@ -594,11 +595,33 @@ func handleUserInput(channel ssh.Channel, assistant *ai.Assistant, dynamicPrompt
 						refreshLine(channel, inputState, dynamicPrompt)
 					case 67: // 右方向键 ESC[C
 						if inputState.MoveCursorRight() {
-							channel.Write([]byte("\033[C")) // 向右移动光标
+							// 获取刚移动过的字符，计算其显示宽度
+							if inputState.cursorPos > 0 {
+								movedChar := inputState.buffer[inputState.cursorPos-1]
+								charWidth := 1
+								if movedChar >= 128 {
+									charWidth = 2 // 中文字符宽度为2
+								}
+								// 根据字符宽度移动终端光标
+								for i := 0; i < charWidth; i++ {
+									channel.Write([]byte("\033[C"))
+								}
+							}
 						}
 					case 68: // 左方向键 ESC[D
-						if inputState.MoveCursorLeft() {
-							channel.Write([]byte("\033[D")) // 向左移动光标
+						if inputState.cursorPos > 0 {
+							// 获取即将移动过的字符，计算其显示宽度
+							charToMove := inputState.buffer[inputState.cursorPos-1]
+							charWidth := 1
+							if charToMove >= 128 {
+								charWidth = 2 // 中文字符宽度为2
+							}
+							if inputState.MoveCursorLeft() {
+								// 根据字符宽度移动终端光标
+								for i := 0; i < charWidth; i++ {
+									channel.Write([]byte("\033[D"))
+								}
+							}
 						}
 					}
 					escapeSequence = nil
@@ -621,6 +644,11 @@ func handleUserInput(channel ssh.Channel, assistant *ai.Assistant, dynamicPrompt
 
 			switch r {
 			case 13: // Enter键
+				// 如果正在处理AI请求，忽略新的输入
+				if isProcessing {
+					continue
+				}
+
 				input := strings.TrimSpace(inputState.String())
 				channel.Write([]byte("\r\n"))
 
@@ -636,37 +664,74 @@ func handleUserInput(channel ssh.Channel, assistant *ai.Assistant, dynamicPrompt
 					channel.Write([]byte(i18n.T("user.exit") + "\r\n"))
 					return
 				} else if input != "" {
-					// 处理AI请求
-					assistant.ProcessMessage(input, channel, interrupt)
+					// 设置处理状态
+					isProcessing = true
+
+					// 创建新的中断通道用于这次AI请求
+					currentInterrupt = make(chan bool)
+
+					// 异步处理AI请求，这样Ctrl+C可以在处理过程中被响应
+					go func(userInput string, interruptCh chan bool) {
+						assistant.ProcessMessage(userInput, channel, interruptCh)
+						// 请求完成后清空引用和状态
+						currentInterrupt = nil
+						isProcessing = false
+						// 显示提示符
+						channel.Write([]byte(dynamicPrompt))
+					}(input, currentInterrupt)
+				} else {
+					// 空输入，直接显示提示符
+					channel.Write([]byte(dynamicPrompt))
 				}
-				// 清空输入状态并显示提示符
+				// 清空输入状态
 				inputState.Clear()
-				channel.Write([]byte(dynamicPrompt))
 
 			case 127, 8: // Backspace/Delete键
+				// 如果正在处理AI请求，忽略编辑操作
+				if isProcessing {
+					continue
+				}
 				if inputState.DeleteRune() {
 					refreshLine(channel, inputState, dynamicPrompt)
 				}
 
 			case 1: // Ctrl+A - 移动到行首
+				// 如果正在处理AI请求，忽略编辑操作
+				if isProcessing {
+					continue
+				}
 				inputState.MoveCursorToStart()
 				refreshLine(channel, inputState, dynamicPrompt)
 
 			case 5: // Ctrl+E - 移动到行尾
+				// 如果正在处理AI请求，忽略编辑操作
+				if isProcessing {
+					continue
+				}
 				inputState.MoveCursorToEnd()
 				refreshLine(channel, inputState, dynamicPrompt)
 
 			case 3: // Ctrl+C
-				// 发送中断信号
-				select {
-				case interrupt <- true:
-				default:
+				// 如果有正在进行的AI请求，发送中断信号
+				if currentInterrupt != nil {
+					// 使用 goroutine 异步发送，避免阻塞
+					go func(ch chan bool) {
+						select {
+						case ch <- true:
+						case <-time.After(50 * time.Millisecond):
+						}
+					}(currentInterrupt)
 				}
+
 				channel.Write([]byte("\r\n^C\r\n"))
 				inputState.Clear()
 				channel.Write([]byte(dynamicPrompt))
 
 			default:
+				// 如果正在处理AI请求，忽略字符输入
+				if isProcessing {
+					continue
+				}
 				// 处理所有可打印字符，包括中文
 				if r >= 32 || (r > 127 && utf8.ValidRune(r)) {
 					inputState.InsertRune(r)

@@ -15,7 +15,7 @@ auth:
 api:
   base_url: "http://localhost:11434/v1"
   api_key: ""
-  default_model: "deepseek-v3"
+  default_model: "gpt-oss:20b"
   timeout: 600  # 请求超时时间（秒）
 
 # 显示配置
@@ -44,8 +44,11 @@ prompt:
   assistant_prompt: "AI助手："
   
   # stdin输入分析提示词 - 当用户通过管道输入内容时使用
+  # 这段内容会附加在用户通过管道发送过来的数据/消息之前
+  # [{role:system,content:system_prompt}, { role: user, content: stdin_prompt + '\n\n' + user_input }]
   stdin_prompt: "请分析以下内容并提供相关的帮助、建议或解释。如果是代码，请提供代码分析和改进建议；如果是配置文件，请检查配置并提供优化建议；如果是文档，请总结要点并提供相关建议："
   
   # exec命令处理提示词 - 当用户通过SSH exec执行命令时使用
-  exec_prompt: "你是一个专业的AI助手（开源的SSHAI，项目地址：https://github.com/sshllm/sshai），擅长回答各种问题。请用简洁、准确、有帮助的方式回答用户的问题。"
+  # 这段内容将会附加在用户的消息之前。比如[{role:system,content:system_prompt}, { role: user, content: exec_prompt + '\n\n' + user_input }]
+  exec_prompt: ""
   # exec_prompt: "你是一个专业的中英互译专家！请根据用户输入的内容，进行对应的翻译！比如用户如果输入的是中文，则翻译成英文；反之亦然；请保持翻译原意以及语法的准确性！只需要回复翻译的结果，不要回复任何备注等无关信息"

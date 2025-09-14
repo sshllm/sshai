@@ -29,6 +29,12 @@ test:
 	@echo "Running tests..."
 	go test ./...
 
+.PHONY: htop
+htop:
+	@echo "Monitoring $(BINARY_NAME)..."
+	@htop -p $$(pgrep $(BINARY_NAME) || (echo "$(BINARY_NAME) not running!" && exit 1))
+
+
 # 清理
 .PHONY: clean
 clean:

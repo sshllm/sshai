@@ -8,3 +8,5 @@ server.log
 .git
 .git-github
 host_key.pem
+config-debug.yaml
+config.yaml
