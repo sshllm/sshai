@@ -4,7 +4,13 @@
 
 一个通过SSH连接提供AI模型服务的智能助手程序，让你可以在任何支持SSH的环境中使用AI助手。
 
-## 🚀 立即体验
+## 🚀 精选案例
+`SSHLLM`，基于当前开源版深度定制的多用户多配置版，支持用户注册、配置助手，并分享公开或者私有使用。随时随地通过SSH即可调用AI助手完成如自动生成bash脚本、代码、识别图片验证码等功能。
+
+官网：[https://sshllm.top](https://sshllm.top)
+
+
+## 🚀 体验（开源版本）
 打开你的终端，输入如下命令即可立即体验在线AI服务！
 ```bash
 ssh test.sshai.top -p 9527
@@ -15,7 +21,8 @@ ssh test.sshai.top -p 9527
 ## ✨ 主要特性
 
 - 🔐 **SSH安全连接** - 通过SSH协议提供加密的AI服务访问
-- 🔑 **灵活认证** - 支持密码认证和无密码模式
+- 🔑 **灵活认证** - 支持密码认证、SSH公钥免密登录和无密码模式
+- 🗝️ **SSH Keys支持** - 支持多个SSH公钥免密登录，兼容RSA、Ed25519等密钥类型
 - 🤖 **多模型支持** - 支持DeepSeek、Hunyuan等多种AI模型
 - 💭 **实时思考显示** - 支持DeepSeek R1等模型的思考过程实时展示
 - 🎨 **美观界面** - 彩色输出、动画效果和ASCII艺术
@@ -60,6 +67,11 @@ server:
 auth:
   password: ""  # 留空=无密码认证
   login_prompt: "请输入访问密码: "
+  # SSH公钥免密登录配置（仅在设置password时生效）
+  authorized_keys:
+    - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... user@hostname"
+    - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user2@hostname"
+  authorized_keys_file: "~/.ssh/authorized_keys"  # 可选：从文件读取公钥
 
 # 自定义提示词配置
 prompt:
@@ -163,13 +175,42 @@ api_endpoints:
 
 ### 认证配置
 
+#### 密码认证
 ```yaml
 auth:
   password: "your-secure-password"  # 设置访问密码
   login_prompt: "请输入访问密码: "
 ```
 
-**注意**: 登录成功后会自动显示程序内置的欢迎信息，无需在配置文件中设置。
+#### SSH公钥免密登录
+```yaml
+auth:
+  password: "your-secure-password"  # 必须设置密码才能启用SSH公钥认证
+  login_prompt: "请输入访问密码: "
+  # 方式一：直接配置公钥列表
+  authorized_keys:
+    - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... user@hostname"
+    - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user2@hostname"
+  # 方式二：从文件读取公钥
+  authorized_keys_file: "~/.ssh/authorized_keys"
+```
+
+**SSH公钥使用方法**：
+```bash
+# 生成SSH密钥对
+ssh-keygen -t ed25519 -f ~/.ssh/sshai_key
+
+# 使用私钥连接（免密登录）
+ssh -i ~/.ssh/sshai_key -p 2213 user@localhost
+
+# 查看公钥内容（用于配置）
+cat ~/.ssh/sshai_key.pub
+```
+
+**注意**: 
+- SSH公钥认证仅在设置密码时启用，提供额外的安全保障
+- 支持多个公钥同时配置，兼容RSA、Ed25519、ECDSA等密钥类型
+- 登录成功后会自动显示程序内置的欢迎信息，无需在配置文件中设置
 
 ### 提示词配置
 
@@ -199,6 +240,9 @@ prompt:
 
 # DeepSeek R1思考模式测试
 ./scripts/test_deepseek_r1.sh
+
+# SSH Keys免密登录功能测试
+./scripts/test_ssh_keys.sh
 ```
 
 ## 📚 文档
@@ -207,6 +251,7 @@ prompt:
 - [使用指南](docs/USAGE.md) - 功能介绍和使用方法
 - [架构说明](docs/MODULAR_ARCHITECTURE.md) - 模块化架构设计
 - [认证配置](docs/AUTH_CONFIG_EXAMPLE.md) - SSH认证配置示例
+- [SSH Keys指南](docs/SSH_KEYS_GUIDE.md) - SSH公钥免密登录配置指南
 
 ## 🤝 贡献
 

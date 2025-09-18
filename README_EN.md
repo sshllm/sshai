@@ -7,7 +7,8 @@ An intelligent AI assistant program that provides AI model services through SSH 
 ## ✨ Key Features
 
 - 🔐 **Secure SSH Connection** - Encrypted AI service access through SSH protocol
-- 🔑 **Flexible Authentication** - Support for password authentication and passwordless mode
+- 🔑 **Flexible Authentication** - Support for password authentication, SSH key-based passwordless login, and passwordless mode
+- 🗝️ **SSH Keys Support** - Support for multiple SSH public keys for passwordless login, compatible with RSA, Ed25519, and other key types
 - 🤖 **Multi-Model Support** - Support for DeepSeek, Hunyuan, and other AI models
 - 💭 **Real-time Thinking Display** - Real-time display of thinking processes for models like DeepSeek R1
 - 🎨 **Beautiful Interface** - Colorful output, animations, and ASCII art
@@ -52,6 +53,11 @@ server:
 auth:
   password: ""  # Empty = no password authentication
   login_prompt: "Please enter password: "
+  # SSH public key passwordless login configuration (only effective when password is set)
+  authorized_keys:
+    - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... user@hostname"
+    - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user2@hostname"
+  authorized_keys_file: "~/.ssh/authorized_keys"  # Optional: read public keys from file
 
 # Custom Prompt Configuration
 prompt:
@@ -155,13 +161,42 @@ api_endpoints:
 
 ### Authentication Configuration
 
+#### Password Authentication
 ```yaml
 auth:
   password: "your-secure-password"  # Set access password
   login_prompt: "Please enter password: "
 ```
 
-**Note**: After successful login, the program will automatically display built-in welcome information, no need to configure in the config file.
+#### SSH Public Key Passwordless Login
+```yaml
+auth:
+  password: "your-secure-password"  # Password must be set to enable SSH public key authentication
+  login_prompt: "Please enter password: "
+  # Method 1: Configure public key list directly
+  authorized_keys:
+    - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... user@hostname"
+    - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user2@hostname"
+  # Method 2: Read public keys from file
+  authorized_keys_file: "~/.ssh/authorized_keys"
+```
+
+**SSH Public Key Usage**:
+```bash
+# Generate SSH key pair
+ssh-keygen -t ed25519 -f ~/.ssh/sshai_key
+
+# Connect using private key (passwordless login)
+ssh -i ~/.ssh/sshai_key -p 2213 user@localhost
+
+# View public key content (for configuration)
+cat ~/.ssh/sshai_key.pub
+```
+
+**Note**: 
+- SSH public key authentication is only enabled when a password is set, providing additional security
+- Supports multiple public keys simultaneously, compatible with RSA, Ed25519, ECDSA, and other key types
+- After successful login, the program will automatically display built-in welcome information, no need to configure in the config file
 
 ### Prompt Configuration
 
@@ -191,6 +226,9 @@ The project includes comprehensive test scripts:
 
 # DeepSeek R1 thinking mode test
 ./scripts/test_deepseek_r1.sh
+
+# SSH Keys passwordless login functionality test
+./scripts/test_ssh_keys.sh
 ```
 
 ## 📚 Documentation
@@ -199,6 +237,7 @@ The project includes comprehensive test scripts:
 - [Usage Guide](docs/USAGE.md) - Feature introduction and usage methods
 - [Architecture Documentation](docs/MODULAR_ARCHITECTURE.md) - Modular architecture design
 - [Authentication Configuration](docs/AUTH_CONFIG_EXAMPLE.md) - SSH authentication configuration examples
+- [SSH Keys Guide](docs/SSH_KEYS_GUIDE.md) - SSH public key passwordless login configuration guide
 
 ## 🤝 Contributing
 

@@ -10,6 +10,11 @@ server:
 auth:
   password: ""  # 留空则不需要密码认证，设置密码则需要认证
   login_prompt: "请输入访问密码: "
+  # SSH公钥免密登录配置（仅在设置password时生效）
+  authorized_keys: []  # SSH公钥列表，支持多个公钥
+    # - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... user@hostname"
+    # - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user2@hostname"
+  authorized_keys_file: ""  # SSH公钥文件路径（可选，如 ~/.ssh/authorized_keys）
 
 # AI API配置
 api:

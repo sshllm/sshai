@@ -12,12 +12,14 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
+	"sshai/pkg/auth"
 	"sshai/pkg/config"
 )
 
 // Server SSH服务器结构体
 type Server struct {
-	config *ssh.ServerConfig
+	config     *ssh.ServerConfig
+	keyManager *auth.AuthorizedKeysManager
 }
 
 // NewServer 创建新的SSH服务器
@@ -36,6 +38,15 @@ func NewServer() (*Server, error) {
 		ServerVersion: "SSH-2.0-SSHAI.TOP",
 	}
 
+	// 初始化SSH公钥管理器
+	var keyManager *auth.AuthorizedKeysManager
+	if auth.IsEnabled() {
+		keyManager, err = auth.NewAuthorizedKeysManager()
+		if err != nil {
+			log.Printf("警告：SSH公钥管理器初始化失败: %v", err)
+		}
+	}
+
 	// 根据配置决定认证方式
 	if cfg.Auth.Password == "" {
 		// 无密码认证 - 接受所有连接
@@ -46,25 +57,39 @@ func NewServer() (*Server, error) {
 		sshConfig.PasswordCallback = func(conn ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
 			log.Printf("密码认证尝试: user=%s", conn.User())
 			if string(password) == cfg.Auth.Password {
-				log.Printf("用户 %s 认证成功", conn.User())
+				log.Printf("用户 %s 密码认证成功", conn.User())
 				return nil, nil
 			}
-			log.Printf("用户 %s 认证失败", conn.User())
+			log.Printf("用户 %s 密码认证失败", conn.User())
 			return nil, fmt.Errorf("密码错误")
 		}
-		log.Printf("SSH服务器配置：密码认证模式")
-	}
 
-	// 公钥认证（可选，暂时禁用）
-	sshConfig.PublicKeyCallback = func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-		// 暂时不支持公钥认证
-		return nil, fmt.Errorf("不支持公钥认证")
+		// SSH公钥认证（仅在设置密码时启用）
+		if keyManager != nil && keyManager.GetKeyCount() > 0 {
+			sshConfig.PublicKeyCallback = func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+				log.Printf("SSH公钥认证尝试: user=%s, key_type=%s", conn.User(), key.Type())
+				if keyManager.VerifyPublicKey(key) {
+					log.Printf("用户 %s SSH公钥认证成功", conn.User())
+					return nil, nil
+				}
+				log.Printf("用户 %s SSH公钥认证失败", conn.User())
+				return nil, fmt.Errorf("公钥未授权")
+			}
+			log.Printf("SSH服务器配置：密码认证 + SSH公钥认证模式（共 %d 个授权公钥）", keyManager.GetKeyCount())
+		} else {
+			// 禁用公钥认证
+			sshConfig.PublicKeyCallback = func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+				return nil, fmt.Errorf("公钥认证未启用")
+			}
+			log.Printf("SSH服务器配置：仅密码认证模式")
+		}
 	}
 
 	sshConfig.AddHostKey(hostKey)
 
 	return &Server{
-		config: sshConfig,
+		config:     sshConfig,
+		keyManager: keyManager,
 	}, nil
 }
 

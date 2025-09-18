@@ -9,7 +9,7 @@ import (
 
 // WelcomeBanner 程序欢迎banner，用于启动时显示和SSH登录时显示
 const WelcomeBanner = `     ╭──╮
-     │██│        🚀 SSHAI v0.9.13 - Smart SSH AI Assistant
+     │██│        🚀 SSHAI v0.9.18 - Smart SSH AI Assistant
    ╭─┴──┴─╮      ─────────────────────────────────────────────
    │ ◉  ◉ │      
    │   ▿  │      🤖 随时随地使用的在线AI助手
@@ -30,8 +30,10 @@ type Config struct {
 		PromptTemplate string `yaml:"prompt_template"`
 	} `yaml:"server"`
 	Auth struct {
-		Password    string `yaml:"password"`
-		LoginPrompt string `yaml:"login_prompt"`
+		Password           string   `yaml:"password"`
+		LoginPrompt        string   `yaml:"login_prompt"`
+		AuthorizedKeys     []string `yaml:"authorized_keys"`      // SSH公钥列表，支持多个
+		AuthorizedKeysFile string   `yaml:"authorized_keys_file"` // SSH公钥文件路径（可选）
 	} `yaml:"auth"`
 	API struct {
 		BaseURL      string `yaml:"base_url"`
