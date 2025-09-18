@@ -519,7 +519,7 @@ func HandleSession(channel ssh.Channel, requests <-chan *ssh.Request, username s
 
 	// 生成彩色动态提示符
 	hostname := "sshai.top" // 可以从配置或系统获取
-	dynamicPrompt := ui.GeneratePrompt(username, hostname, selectedModel)
+	dynamicPrompt := ui.FormatPrompt(username, hostname, selectedModel)
 	channel.Write([]byte("\r\n" + dynamicPrompt))
 
 	// 处理用户输入

@@ -55,9 +55,35 @@ jobs:
           echo "# English language pack" > pkg/i18n/lang/lang-en-us.yaml
         fi
 
+    - name: Set version variables
+      id: version
+      run: |
+        VERSION="${{ github.event.inputs.version }}"
+        GIT_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+        BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        GO_VERSION=$(go version | cut -d' ' -f3)
+        
+        echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+        echo "GIT_COMMIT=${GIT_COMMIT}" >> $GITHUB_OUTPUT
+        echo "BUILD_TIME=${BUILD_TIME}" >> $GITHUB_OUTPUT
+        echo "GO_VERSION=${GO_VERSION}" >> $GITHUB_OUTPUT
+        
+        echo "Manual Release Build Info:"
+        echo "  Version: ${VERSION}"
+        echo "  Commit: ${GIT_COMMIT}"
+        echo "  Build Time: ${BUILD_TIME}"
+        echo "  Go Version: ${GO_VERSION}"
+
     - name: Build all platforms
       run: |
         mkdir -p build dist
+        
+        # 使用与Makefile相同的LDFLAGS
+        LDFLAGS="-X 'sshai/pkg/version.Version=${{ steps.version.outputs.VERSION }}' \
+                 -X 'sshai/pkg/version.GitCommit=${{ steps.version.outputs.GIT_COMMIT }}' \
+                 -X 'sshai/pkg/version.BuildTime=${{ steps.version.outputs.BUILD_TIME }}' \
+                 -X 'sshai/pkg/version.GoVersion=${{ steps.version.outputs.GO_VERSION }}' \
+                 -s -w"
         
         platforms=(
           "linux/amd64"
@@ -70,7 +96,7 @@ jobs:
         for platform in "${platforms[@]}"; do
           IFS='/' read -r GOOS GOARCH <<< "$platform"
           
-          echo "Building for $GOOS/$GOARCH..."
+          echo "Building for $GOOS/$GOARCH with version info..."
           
           output_name="${PROJECT_NAME}_${GOOS}_${GOARCH}"
           if [ "$GOOS" = "windows" ]; then
@@ -78,7 +104,7 @@ jobs:
           fi
           
           GOOS=$GOOS GOARCH=$GOARCH go build \
-            -ldflags "-X main.version=${{ github.event.inputs.version }} -s -w" \
+            -ldflags "${LDFLAGS}" \
             -o "build/${output_name}" \
             cmd/main.go
           
@@ -92,9 +118,11 @@ jobs:
           # Create README for this platform
           cat > "$dist_dir/README.txt" << EOF
         SSHAI - SSH AI Assistant
-        Version: ${{ github.event.inputs.version }}
+        Version: ${{ steps.version.outputs.VERSION }}
         Platform: ${GOOS}/${GOARCH}
-        Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        Git Commit: ${{ steps.version.outputs.GIT_COMMIT }}
+        Build Time: ${{ steps.version.outputs.BUILD_TIME }}
+        Go Version: ${{ steps.version.outputs.GO_VERSION }}
 
         Quick Start:
         1. Edit config.yaml.example with your API configuration

@@ -55,11 +55,25 @@ jobs:
       id: version
       run: |
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          VERSION="${{ github.event.inputs.version }}"
         else
-          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          VERSION="${GITHUB_REF#refs/tags/}"
         fi
-        echo "BUILD_TIME=$(date +%Y%m%d_%H%M%S)" >> $GITHUB_OUTPUT
+        
+        GIT_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+        BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        GO_VERSION=$(go version | cut -d' ' -f3)
+        
+        echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+        echo "GIT_COMMIT=${GIT_COMMIT}" >> $GITHUB_OUTPUT
+        echo "BUILD_TIME=${BUILD_TIME}" >> $GITHUB_OUTPUT
+        echo "GO_VERSION=${GO_VERSION}" >> $GITHUB_OUTPUT
+        
+        echo "Release Build Info:"
+        echo "  Version: ${VERSION}"
+        echo "  Commit: ${GIT_COMMIT}"
+        echo "  Build Time: ${BUILD_TIME}"
+        echo "  Go Version: ${GO_VERSION}"
 
     - name: Check language files
       run: |
@@ -80,10 +94,16 @@ jobs:
         GOARCH: ${{ matrix.goarch }}
       run: |
         OUTPUT_NAME="${PROJECT_NAME}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.suffix }}"
-        go build \
-          -ldflags "-X main.version=${{ steps.version.outputs.VERSION }} -s -w" \
-          -o "build/${OUTPUT_NAME}" \
-          cmd/main.go
+        
+        # 使用与Makefile相同的LDFLAGS
+        LDFLAGS="-X 'sshai/pkg/version.Version=${{ steps.version.outputs.VERSION }}' \
+                 -X 'sshai/pkg/version.GitCommit=${{ steps.version.outputs.GIT_COMMIT }}' \
+                 -X 'sshai/pkg/version.BuildTime=${{ steps.version.outputs.BUILD_TIME }}' \
+                 -X 'sshai/pkg/version.GoVersion=${{ steps.version.outputs.GO_VERSION }}' \
+                 -s -w"
+        
+        echo "Building ${OUTPUT_NAME} with version info..."
+        go build -ldflags "${LDFLAGS}" -o "build/${OUTPUT_NAME}" cmd/main.go
         echo "BINARY_NAME=${OUTPUT_NAME}" >> $GITHUB_ENV
 
     - name: Create release package
@@ -102,7 +122,9 @@ jobs:
         SSHAI - SSH AI Assistant (Embedded Language Pack Version)
         Version: ${{ steps.version.outputs.VERSION }}
         Platform: ${{ matrix.goos }}/${{ matrix.goarch }}
+        Git Commit: ${{ steps.version.outputs.GIT_COMMIT }}
         Build Time: ${{ steps.version.outputs.BUILD_TIME }}
+        Go Version: ${{ steps.version.outputs.GO_VERSION }}
 
         Deployment Instructions:
         1. Copy ${BINARY_NAME} and config.yaml.example to your target server

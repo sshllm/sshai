@@ -11,17 +11,27 @@ import (
 func GenerateBanner() string {
 	buildInfo := version.GetBuildInfo()
 
-	// 创建彩色的SSHAI LLVM标题
-	title1 := Rainbow("SSH") + " " + Rainbow("LLVM")
+	// ASCII艺术画 - 使用字符串拼接避免转义问题
+	line1 := "  .-')     .-')    ('-. .-.         ('-.              "
+	line2 := " ( OO ).  ( OO ). ( OO )  /        ( OO ).-.          "
+	line3 := "(_)---\\_)(_)---\\_),--. ,--.        / . --. /  ,-.-')  "
+	line4 := "/    _ | /    _ | |  | |  |        | \\-.  \\   |  |OO) "
+	line5 := "\\  :" + "`" + " " + "`" + ". \\  :" + "`" + " " + "`" + ". |   .|  |      .-'-'  |  |  |  |  \\ "
+	line6 := " '.." + "`" + "''.)" + " '.." + "`" + "''.)|       |       \\| |_.'  |  |  |(_/ "
+	line7 := ".-._)   \\.-._)   \\|  .-.  |        |  .-.  | ,|  |_.' "
+	line8 := "\\       /\\       /|  | |  |        |  | |  |(_|  |    "
+	line9 := " " + "`" + "-----'  " + "`" + "-----' " + "`" + "--' " + "`" + "--'        " + "`" + "--' " + "`" + "--'  " + "`" + "--'    "
+
+	asciiArt := BrightCyanText(line1 + "\n" + line2 + "\n" + line3 + "\n" + line4 + "\n" + line5 + "\n" + line6 + "\n" + line7 + "\n" + line8 + "\n" + line9)
 
 	// 版本信息
-	versionLine := BrightGreenText("🚀 Multi-User SSH AI Assistant ") + BrightWhiteText(buildInfo.Version)
+	versionLine := BrightGreenText("🚀 SSH AI Assistant ") + BrightWhiteText(buildInfo.Version)
 
 	// 功能特性行
 	features := []string{
 		BrightCyanText("⚡ AI-Powered"),
-		BrightMagentaText("👥 Multi-User"),
 		BrightYellowText("⚡ Real-time"),
+		BrightMagentaText("🔒 Secure"),
 	}
 	featureLine := strings.Join(features, "   ")
 
@@ -38,7 +48,6 @@ func GenerateBanner() string {
 %s
 
 %s
-─────────────────────────────────────────────
 
 %s
 
@@ -48,7 +57,7 @@ func GenerateBanner() string {
 
 %s
 
-`, title1, versionLine, featureLine, websiteLine, githubLine, buildLine, bottomLine)
+`, asciiArt, versionLine, featureLine, websiteLine, githubLine, buildLine, bottomLine)
 
 	return banner
 }
@@ -65,25 +74,20 @@ func GenerateWelcomeMessage(username string) string {
 %s
 
 %s
-
 `, greeting, separator, helpText)
-}
-
-// GeneratePrompt 生成彩色提示符
-func GeneratePrompt(username, hostname, model string) string {
-	return FormatPrompt(username, hostname, model)
-}
-
-// GenerateModelInfo 生成模型信息显示
-func GenerateModelInfo(model string) string {
-	return fmt.Sprintf("Current model: %s", FormatModelName(model))
 }
 
 // GenerateConnectionInfo 生成连接信息
 func GenerateConnectionInfo(port string) string {
-	return fmt.Sprintf("%s %s",
-		BrightGreenText("✓ SSH AI Server listening on port"),
-		BrightYellowText(port))
+	return fmt.Sprintf(`%s
+%s %s
+%s %s`,
+		BrightGreenText("🚀 SSHAI Server Started Successfully!"),
+		BrightCyanText("📡 Listening on port:"),
+		BrightYellowText(port),
+		BrightCyanText("🔗 Connect with:"),
+		BrightWhiteText(fmt.Sprintf("ssh localhost -p %s", port)),
+	)
 }
 
 // GenerateStartupInfo 生成启动信息
@@ -94,5 +98,6 @@ func GenerateStartupInfo(port string) string {
 %s %s`,
 		GenerateConnectionInfo(port),
 		BrightCyanText("Connect with:"),
-		BrightWhiteText(connectCmd))
+		BrightWhiteText(connectCmd),
+	)
 }

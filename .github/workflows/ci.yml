@@ -64,15 +64,45 @@ jobs:
           fi
         fi
 
+    - name: Set version variables
+      id: version
+      run: |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "v0.9.19-ci")
+        GIT_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+        BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        GO_VERSION=$(go version | cut -d' ' -f3)
+        
+        echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+        echo "GIT_COMMIT=${GIT_COMMIT}" >> $GITHUB_OUTPUT
+        echo "BUILD_TIME=${BUILD_TIME}" >> $GITHUB_OUTPUT
+        echo "GO_VERSION=${GO_VERSION}" >> $GITHUB_OUTPUT
+        
+        echo "Build Info:"
+        echo "  Version: ${VERSION}"
+        echo "  Commit: ${GIT_COMMIT}"
+        echo "  Build Time: ${BUILD_TIME}"
+        echo "  Go Version: ${GO_VERSION}"
+
     - name: Build for Linux AMD64
       run: |
         mkdir -p build
-        go build -ldflags "-s -w" -o build/sshai_linux_amd64 cmd/main.go
+        LDFLAGS="-X 'sshai/pkg/version.Version=${{ steps.version.outputs.VERSION }}' \
+                 -X 'sshai/pkg/version.GitCommit=${{ steps.version.outputs.GIT_COMMIT }}' \
+                 -X 'sshai/pkg/version.BuildTime=${{ steps.version.outputs.BUILD_TIME }}' \
+                 -X 'sshai/pkg/version.GoVersion=${{ steps.version.outputs.GO_VERSION }}' \
+                 -s -w"
+        go build -ldflags "${LDFLAGS}" -o build/sshai_linux_amd64 cmd/main.go
 
     - name: Build for multiple platforms
       run: |
-        GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o build/sshai_darwin_amd64 cmd/main.go
-        GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o build/sshai_windows_amd64.exe cmd/main.go
+        LDFLAGS="-X 'sshai/pkg/version.Version=${{ steps.version.outputs.VERSION }}' \
+                 -X 'sshai/pkg/version.GitCommit=${{ steps.version.outputs.GIT_COMMIT }}' \
+                 -X 'sshai/pkg/version.BuildTime=${{ steps.version.outputs.BUILD_TIME }}' \
+                 -X 'sshai/pkg/version.GoVersion=${{ steps.version.outputs.GO_VERSION }}' \
+                 -s -w"
+        
+        GOOS=darwin GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o build/sshai_darwin_amd64 cmd/main.go
+        GOOS=windows GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o build/sshai_windows_amd64.exe cmd/main.go
 
     - name: Check binary size
       run: |

@@ -8,7 +8,7 @@ import (
 
 // 版本信息变量，在编译时通过 -ldflags 设置
 var (
-	Version   = "v0.9.19"                           // 版本号
+	Version   = "v0.9.18"                           // 版本号
 	GitCommit = "unknown"                           // Git提交哈希
 	BuildTime = "unknown"                           // 编译时间
 	GoVersion = runtime.Version()                   // Go版本
