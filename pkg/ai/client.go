@@ -102,6 +102,12 @@ func (c *OpenAIClient) callStreamingAPI(ctx context.Context, channel ssh.Channel
 		Stream:   true,
 	}
 
+	// 设置温度参数（如果配置了的话）
+	cfg := config.Get()
+	if cfg.API.Temperature > 0 {
+		req.Temperature = float32(cfg.API.Temperature)
+	}
+
 	// 创建流式响应
 	stream, err := c.client.CreateChatCompletionStream(ctx, req)
 	if err != nil {

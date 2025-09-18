@@ -8,9 +8,10 @@ type ChatMessage struct {
 
 // ChatRequest OpenAI API 请求结构体
 type ChatRequest struct {
-	Model    string        `json:"model"`
-	Messages []ChatMessage `json:"messages"`
-	Stream   bool          `json:"stream"`
+	Model       string        `json:"model"`
+	Messages    []ChatMessage `json:"messages"`
+	Stream      bool          `json:"stream"`
+	Temperature *float64      `json:"temperature,omitempty"` // 温度参数，控制回答的随机性
 }
 
 // Delta 流式响应中的增量数据

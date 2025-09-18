@@ -21,10 +21,11 @@ type Config struct {
 		AuthorizedKeysFile string   `yaml:"authorized_keys_file"` // SSH公钥文件路径（可选）
 	} `yaml:"auth"`
 	API struct {
-		BaseURL      string `yaml:"base_url"`
-		APIKey       string `yaml:"api_key"`
-		DefaultModel string `yaml:"default_model"`
-		Timeout      int    `yaml:"timeout"`
+		BaseURL      string  `yaml:"base_url"`
+		APIKey       string  `yaml:"api_key"`
+		DefaultModel string  `yaml:"default_model"`
+		Timeout      int     `yaml:"timeout"`
+		Temperature  float64 `yaml:"temperature"` // AI模型温度设置，控制回答的随机性 (0.0-2.0)
 	} `yaml:"api"`
 	Display struct {
 		LineWidth                 int `yaml:"line_width"`
