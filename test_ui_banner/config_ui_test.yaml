@@ -1,0 +1,41 @@
+# SSH AI 服务器配置文件 - UI Banner 测试
+
+# 服务器配置
+server:
+  port: "2216"
+  welcome_message: "欢迎使用SSHAI UI测试！"
+  prompt_template: "%s@sshai-ui.top> "
+
+# 认证配置
+auth:
+  password: ""  # 无密码认证，方便测试
+  login_prompt: "请输入访问密码: "
+
+# AI API配置
+api:
+  base_url: "http://localhost:11434/v1"
+  api_key: ""
+  default_model: "gpt-oss:20b"
+  timeout: 600
+
+# 显示配置
+display:
+  line_width: 80
+  thinking_animation_interval: 150
+  loading_animation_interval: 100
+
+# 证书配置
+security:
+  host_key_file: "host_key_ui_test.pem"
+
+# 国际化配置
+i18n:
+  language: "zh-cn"
+
+# AI提示词配置
+prompt:
+  system_prompt: "你是一个专业的AI助手，正在测试新的UI Banner功能。"
+  user_prompt: "用户问题："
+  assistant_prompt: "AI助手："
+  stdin_prompt: "请分析以下内容："
+  exec_prompt: ""

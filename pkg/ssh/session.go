@@ -12,6 +12,7 @@ import (
 	"sshai/pkg/ai"
 	"sshai/pkg/config"
 	"sshai/pkg/i18n"
+	"sshai/pkg/ui"
 )
 
 // CommandHistory 命令历史结构体
@@ -485,9 +486,9 @@ func HandleSession(channel ssh.Channel, requests <-chan *ssh.Request, username s
 		}
 	}
 
-	// 发送登录成功消息（使用共享的banner常量）
-	// 处理多行消息的换行
-	lines := strings.Split(config.WelcomeBanner, "\n")
+	// 发送登录成功消息（使用新的UI系统）
+	banner := ui.GenerateBanner()
+	lines := strings.Split(banner, "\n")
 	for _, line := range lines {
 		channel.Write([]byte(line + "\r\n"))
 	}
@@ -516,8 +517,9 @@ func HandleSession(channel ssh.Channel, requests <-chan *ssh.Request, username s
 	assistant := ai.NewAssistant(username)
 	assistant.SetModel(selectedModel)
 
-	// 生成动态提示符
-	dynamicPrompt := fmt.Sprintf(cfg.Server.PromptTemplate, selectedModel)
+	// 生成彩色动态提示符
+	hostname := "sshai.top" // 可以从配置或系统获取
+	dynamicPrompt := ui.GeneratePrompt(username, hostname, selectedModel)
 	channel.Write([]byte("\r\n" + dynamicPrompt))
 
 	// 处理用户输入

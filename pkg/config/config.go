@@ -7,21 +7,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// WelcomeBanner 程序欢迎banner，用于启动时显示和SSH登录时显示
-const WelcomeBanner = `     ╭──╮
-     │██│        🚀 SSHAI v0.9.18 - Smart SSH AI Assistant
-   ╭─┴──┴─╮      ─────────────────────────────────────────────
-   │ ◉  ◉ │      
-   │   ▿  │      🤖 随时随地使用的在线AI助手
-   ╰─┬──┬─╯      
-     │  │        🌍 Website: https://sshai.top
-   ╭─┴──┴─╮      📦 GitHub:  https://github.com/sshllm/sshai
-   │ ████ │      
-   ╰──────╯      ⚡ AI-Powered | Cross-Platform | Real-time
-     ╱  ╲        🎯 Built for modern developers and system admins
-    ╱    ╲       
-`
-
 // Config 配置结构体
 type Config struct {
 	Server struct {

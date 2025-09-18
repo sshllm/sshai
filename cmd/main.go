@@ -9,11 +9,12 @@ import (
 	"sshai/pkg/config"
 	"sshai/pkg/i18n"
 	"sshai/pkg/ssh"
+	"sshai/pkg/ui"
 )
 
 // showStartupBanner 显示程序启动时的欢迎banner
 func showStartupBanner() {
-	fmt.Println(config.WelcomeBanner)
+	fmt.Print(ui.GenerateBanner())
 }
 
 func main() {
