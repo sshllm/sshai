@@ -187,20 +187,153 @@ jobs:
         find artifacts -name "*.zip" -exec cp {} release_assets/ \;
         ls -la release_assets/
 
-    - name: Generate release notes
+    - name: Generate release notes from commits
       id: release_notes
       run: |
-        cat > release_notes.md << EOF
+        # 获取上一个标签
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        # 如果没有上一个标签，使用最初的提交
+        if [ -z "$PREVIOUS_TAG" ]; then
+          COMMIT_RANGE="$(git rev-list --max-parents=0 HEAD)..HEAD"
+        else
+          COMMIT_RANGE="${PREVIOUS_TAG}..HEAD"
+        fi
+        
+        echo "Generating release notes for commits: $COMMIT_RANGE"
+        
+        # 检查是否有提交
+        COMMIT_COUNT=$(git rev-list --count $COMMIT_RANGE 2>/dev/null || echo "0")
+        if [ "$COMMIT_COUNT" = "0" ]; then
+          echo "No commits found in range $COMMIT_RANGE, generating basic release notes"
+          
+          # 生成基础发布说明
+          cat > release_notes.md << EOF
         # SSHAI ${{ steps.version.outputs.VERSION }} Release
-
-        ## 🚀 Features
+        
+        ## 📋 本次更新内容
+        
+        ### 🔧 其他更改 (Other Changes)
+        - 版本发布: ${{ steps.version.outputs.VERSION }}
+        - 构建优化和版本管理改进
+        
+        ## 🎯 核心特性 (Core Features)
         - SSH AI Assistant with embedded language packs
         - Multi-platform support (Linux, macOS, Windows)
         - Support for multiple AI models (DeepSeek, Hunyuan, etc.)
         - Real-time thinking display for compatible models
         - Configurable prompts and authentication
         - Beautiful interface with colors and animations
-
+        - SSH Keys免密登录功能
+        - AI模型温度设置功能
+        - 动态配置文件指定功能
+        EOF
+        else
+          echo "Found $COMMIT_COUNT commits to analyze"
+          
+          # 分析提交记录并分类
+          FEATURES=""
+          FIXES=""
+          IMPROVEMENTS=""
+          DOCS=""
+          BREAKING=""
+          OTHER=""
+          
+          while IFS= read -r commit; do
+            # 检测破坏性更改
+            if [[ $commit == *"BREAKING CHANGE"* ]] || [[ $commit == *"!"* ]] && [[ $commit == *":"* ]]; then
+              BREAKING="${BREAKING}- ⚠️ ${commit}\n"
+            # 新功能
+            elif [[ $commit =~ ^feat(\(.+\))?:.*$ ]] || [[ $commit == *"添加"* ]] || [[ $commit == *"新增"* ]]; then
+              clean_msg=$(echo "$commit" | sed 's/^feat[^:]*: *//')
+              FEATURES="${FEATURES}- ${clean_msg}\n"
+            # 问题修复
+            elif [[ $commit =~ ^fix(\(.+\))?:.*$ ]] || [[ $commit == *"修复"* ]] || [[ $commit == *"解决"* ]]; then
+              clean_msg=$(echo "$commit" | sed 's/^fix[^:]*: *//')
+              FIXES="${FIXES}- ${clean_msg}\n"
+            # 性能优化和改进
+            elif [[ $commit == *"优化"* ]] || [[ $commit == *"improve"* ]] || [[ $commit == *"enhance"* ]] || [[ $commit == *"重构"* ]] || [[ $commit =~ ^refactor.*$ ]]; then
+              IMPROVEMENTS="${IMPROVEMENTS}- ${commit}\n"
+            # 文档更新
+            elif [[ $commit == *"文档"* ]] || [[ $commit == *"doc"* ]] || [[ $commit == *"README"* ]] || [[ $commit =~ ^docs.*$ ]]; then
+              DOCS="${DOCS}- ${commit}\n"
+            # 其他更改
+            else
+              OTHER="${OTHER}- ${commit}\n"
+            fi
+          done < <(git log --pretty=format:"%s" $COMMIT_RANGE)
+          
+          # 生成发布说明
+          cat > release_notes.md << EOF
+        # SSHAI ${{ steps.version.outputs.VERSION }} Release
+        
+        ## 📋 本次更新内容
+        
+        EOF
+          
+          # 优先显示破坏性更改
+          if [ ! -z "$BREAKING" ]; then
+            cat >> release_notes.md << EOF
+        ### ⚠️ 破坏性更改 (Breaking Changes)
+        $(echo -e "$BREAKING")
+        **请在升级前仔细阅读上述更改，可能需要调整您的配置或使用方式。**
+        
+        EOF
+          fi
+          
+          if [ ! -z "$FEATURES" ]; then
+            cat >> release_notes.md << EOF
+        ### 🚀 新功能 (New Features)
+        $(echo -e "$FEATURES")
+        EOF
+          fi
+          
+          if [ ! -z "$FIXES" ]; then
+            cat >> release_notes.md << EOF
+        ### 🐛 问题修复 (Bug Fixes)
+        $(echo -e "$FIXES")
+        EOF
+          fi
+          
+          if [ ! -z "$IMPROVEMENTS" ]; then
+            cat >> release_notes.md << EOF
+        ### ⚡ 性能优化 (Improvements)
+        $(echo -e "$IMPROVEMENTS")
+        EOF
+          fi
+          
+          if [ ! -z "$DOCS" ]; then
+            cat >> release_notes.md << EOF
+        ### 📖 文档更新 (Documentation)
+        $(echo -e "$DOCS")
+        EOF
+          fi
+          
+          if [ ! -z "$OTHER" ]; then
+            cat >> release_notes.md << EOF
+        ### 🔧 其他更改 (Other Changes)
+        $(echo -e "$OTHER")
+        EOF
+          fi
+          
+          cat >> release_notes.md << EOF
+        
+        ## 🎯 核心特性 (Core Features)
+        - SSH AI Assistant with embedded language packs
+        - Multi-platform support (Linux, macOS, Windows)
+        - Support for multiple AI models (DeepSeek, Hunyuan, etc.)
+        - Real-time thinking display for compatible models
+        - Configurable prompts and authentication
+        - Beautiful interface with colors and animations
+        - SSH Keys免密登录功能
+        - AI模型温度设置功能
+        - 动态配置文件指定功能
+        EOF
+        fi
+        
+        # 继续添加通用内容
+        cat >> release_notes.md << EOF
+        
         ## 📦 Downloads
         Choose the appropriate package for your platform:
 
@@ -215,36 +348,85 @@ jobs:
         ### Windows
         - **Windows AMD64**: \`sshai_windows_amd64_${{ steps.version.outputs.VERSION }}.zip\`
 
-        ## 🛠️ Installation
-        1. Download the appropriate package for your platform
-        2. Extract the archive
-        3. Configure \`config.yaml.example\` with your API keys
-        4. Run the binary to start the SSH AI service
+        ## 🛠️ 安装指南 (Installation Guide)
+        
+        ### 首次安装 (First Installation)
+        1. 下载适合您平台的安装包
+        2. 解压缩文件
+        3. 复制 \`config.yaml.example\` 为 \`config.yaml\` 并配置您的API密钥
+        4. 运行二进制文件启动SSH AI服务
+        
+        ### 升级指南 (Upgrade Guide)
+        1. 停止当前运行的SSHAI服务
+        2. 备份您的 \`config.yaml\` 配置文件
+        3. 下载新版本并解压
+        4. 将备份的配置文件复制到新版本目录
+        5. 启动新版本服务
+        
+        **注意**: 如果存在破坏性更改，请查看上方的更改说明。
 
-        ## 📖 Documentation
+        ## 📖 文档 (Documentation)
         - [README (中文)](https://github.com/sshllm/sshai/blob/main/README.md)
         - [README (English)](https://github.com/sshllm/sshai/blob/main/README_EN.md)
-        - [Configuration Guide](https://github.com/sshllm/sshai/blob/main/docs/CONFIG_GUIDE.md)
+        - [配置指南 (Configuration Guide)](https://github.com/sshllm/sshai/blob/main/docs/CONFIG_GUIDE.md)
 
-        ## 🔧 Quick Start
+        ## 🔧 快速开始 (Quick Start)
+        
+        ### Linux/macOS
         \`\`\`bash
-        # Extract and configure
+        # 下载并解压 (以Linux AMD64为例)
+        wget https://github.com/sshllm/sshai/releases/download/${{ steps.version.outputs.VERSION }}/sshai_linux_amd64_${{ steps.version.outputs.VERSION }}.zip
         unzip sshai_linux_amd64_${{ steps.version.outputs.VERSION }}.zip
         cd sshai_linux_amd64
         
-        # Edit config.yaml.example with your API key
-        nano config.yaml.example
+        # 配置API密钥
+        cp config.yaml.example config.yaml
+        nano config.yaml  # 编辑配置文件
         
-        # Start the service
+        # 启动服务
         ./sshai_linux_amd64
         
-        # Connect from another terminal
+        # 从另一个终端连接
+        ssh user@localhost -p 2213
+        \`\`\`
+        
+        ### Windows
+        \`\`\`powershell
+        # 解压下载的zip文件
+        # 复制并编辑配置文件
+        copy config.yaml.example config.yaml
+        notepad config.yaml
+        
+        # 启动服务
+        .\\sshai_windows_amd64.exe
+        
+        # 使用SSH客户端连接
         ssh user@localhost -p 2213
         \`\`\`
 
-        ## 🐛 Bug Reports
-        If you encounter any issues, please report them on our [GitHub Issues](https://github.com/sshllm/sshai/issues) page.
+        ## 📊 版本信息 (Version Info)
+        - **版本号**: ${{ steps.version.outputs.VERSION }}
+        - **构建时间**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        - **Git提交**: $(git rev-parse --short HEAD)
+        - **Go版本**: $(go version | cut -d' ' -f3)
+        - **提交范围**: $COMMIT_RANGE
+        - **包含提交数**: $(git rev-list --count $COMMIT_RANGE)
+        
+        ## 🔗 相关链接 (Links)
+        - [项目主页 (Homepage)](https://github.com/sshllm/sshai)
+        - [使用文档 (Documentation)](https://github.com/sshllm/sshai/blob/main/docs/)
+        - [问题反馈 (Issues)](https://github.com/sshllm/sshai/issues)
+        - [讨论区 (Discussions)](https://github.com/sshllm/sshai/discussions)
+        
+        ## 🐛 问题反馈 (Bug Reports)
+        如果您遇到任何问题，请在我们的 [GitHub Issues](https://github.com/sshllm/sshai/issues) 页面报告。
+        
+        ## 🙏 致谢 (Acknowledgments)
+        感谢所有贡献者和用户的支持！
         EOF
+        
+        echo "Generated release notes:"
+        cat release_notes.md
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -262,3 +444,7 @@ jobs:
         echo "✅ Release ${{ steps.version.outputs.VERSION }} created successfully!"
         echo "📦 Assets uploaded:"
         ls -la release_assets/
+        echo ""
+        echo "🔗 Release URL: https://github.com/sshllm/sshai/releases/tag/${{ steps.version.outputs.VERSION }}"
+        echo "📋 Release notes generated from commits since last tag"
+        echo "🎉 Release is now available for download!"
