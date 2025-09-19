@@ -2,7 +2,21 @@
 
 [English](./README_EN.md) | 简体中文
 
-一个通过SSH连接提供AI模型服务的智能助手程序，让你可以在任何支持SSH的环境中使用AI助手。
+一个通过SSH连接提供AI模型服务的智能助手程序，让你可以在任何支持SSH的环境中使用AI助手。 
+
+支持[三种调用模式](https://mp.weixin.qq.com/s/_sSEC15WOfeF0t8AaQ6Qbg)：
+- **交互模式** - 通过SSH连接后，直接在终端中输入命令即可调用AI助手（`ssh your-bot@sshllm.top`）    
+- **命令行模式** - 通过SSH连接后，直接在终端中执行命令即可调用AI助手（`ssh bash@sshllm.top 查看进程占用`）    
+- **管道模式** - 通过SSH连接后，通过管道将内容输入到AI助手即可调用AI助手（`cat doc.txt | ssh fanyi@sshllm.top`）
+
+此项目采用`CodeBuddy`进行开发，完全不写一行代码。    
+关于开发的经验心得，请参考：[不写一行代码！我用 AI 打造了一款 AI 客户端！（开源）](https://mp.weixin.qq.com/s/-5GC3TDAP_CXAcAkGO7tMQ)    
+
+
+⭐感谢关注⭐
+
+![](https://aicu.icu/gzh.jpg)
+
 
 ## 🚀 精选案例
 `SSHLLM`，基于当前开源版深度定制的多用户多配置版，支持用户注册、配置助手，并分享公开或者私有使用。随时随地通过SSH即可调用AI助手完成如自动生成bash脚本、代码、识别图片验证码等功能。
