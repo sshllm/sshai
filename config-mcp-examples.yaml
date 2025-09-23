@@ -1,0 +1,62 @@
+# MCP服务器配置示例
+# 本文件展示了如何正确配置不同类型的MCP服务器
+
+mcp:
+  enabled: true
+  refresh_interval: 300
+  servers:
+    # === NPX 服务器配置示例 ===
+    # npx服务器可能需要更长的启动时间，特别是首次运行时需要下载包
+    
+    - name: "bing-search"
+      transport: "stdio"
+      command: ["npx", "bing-cn-mcp"]
+      enabled: true
+      # 注意：npx首次运行可能需要下载包，会有延迟
+      
+    - name: "filesystem-npx"
+      transport: "stdio" 
+      command: ["npx", "@modelcontextprotocol/server-filesystem", "/tmp"]
+      enabled: false  # 示例，默认禁用
+      
+    # === UVX 服务器配置示例 ===
+    # uvx通常启动更快，因为它有更好的缓存机制
+    
+    - name: "time-server"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-time"]
+      enabled: true
+      
+    - name: "fetch-server"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-fetch"]
+      enabled: true
+      
+    - name: "filesystem-uvx"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-filesystem", "/tmp"]
+      enabled: false  # 示例，默认禁用
+      
+    # === 本地命令示例 ===
+    # 直接使用已安装的命令
+    
+    - name: "local-filesystem"
+      transport: "stdio"
+      command: ["mcp-server-filesystem", "/tmp"]
+      enabled: false  # 需要先安装对应的包
+      
+    # === 故障排除提示 ===
+    # 1. 如果npx服务器卡住：
+    #    - 检查网络连接
+    #    - 尝试手动运行: npx bing-cn-mcp
+    #    - 清理npm缓存: npm cache clean --force
+    #    
+    # 2. 如果uvx服务器失败：
+    #    - 检查Python环境
+    #    - 尝试手动运行: uvx mcp-server-time
+    #    - 更新uvx: pip install --upgrade uvx
+    #    
+    # 3. 通用调试：
+    #    - 查看SSHAI日志输出
+    #    - 确保命令在终端中可以正常运行
+    #    - 检查防火墙和权限设置

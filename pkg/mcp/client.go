@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -134,18 +135,59 @@ func (m *MCPManager) connectToServer(serverCfg config.MCPServer) error {
 		return fmt.Errorf("创建传输失败: %v", err)
 	}
 
-	// 建立连接
-	session, err := client.Connect(m.ctx, transport, nil)
-	if err != nil {
-		return fmt.Errorf("连接失败: %v", err)
+	// 尝试连接，支持重试机制
+	return m.connectWithRetry(client, transport, serverCfg)
+}
+
+// connectWithRetry 带重试机制的连接
+func (m *MCPManager) connectWithRetry(client *mcp.Client, transport mcp.Transport, serverCfg config.MCPServer) error {
+	maxRetries := 2
+	baseTimeout := 15 * time.Second
+	
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// 计算当前尝试的超时时间
+		timeout := baseTimeout + time.Duration(attempt*5)*time.Second
+		connectCtx, cancel := context.WithTimeout(m.ctx, timeout)
+		
+		log.Printf("正在连接到MCP服务器 %s (尝试 %d/%d，超时 %.0f秒)...", 
+			serverCfg.Name, attempt+1, maxRetries+1, timeout.Seconds())
+		
+		session, err := client.Connect(connectCtx, transport, nil)
+		cancel()
+		
+		if err == nil {
+			// 连接成功
+			m.mutex.Lock()
+			m.clients[serverCfg.Name] = session
+			m.mutex.Unlock()
+			
+			log.Printf("成功连接到MCP服务器: %s", serverCfg.Name)
+			return nil
+		}
+		
+		// 连接失败，分析错误类型
+		if connectCtx.Err() == context.DeadlineExceeded {
+			log.Printf("MCP服务器 %s 连接超时 (尝试 %d/%d)", serverCfg.Name, attempt+1, maxRetries+1)
+			
+			// 如果是npx命令且是第一次尝试失败，给出特殊提示
+			if attempt == 0 && len(serverCfg.Command) > 0 && serverCfg.Command[0] == "npx" {
+				log.Printf("npx命令可能需要下载包，正在重试...")
+			}
+		} else {
+			log.Printf("MCP服务器 %s 连接失败: %v (尝试 %d/%d)", serverCfg.Name, err, attempt+1, maxRetries+1)
+		}
+		
+		// 如果不是最后一次尝试，等待一段时间再重试
+		if attempt < maxRetries {
+			waitTime := time.Duration(attempt+1) * 2 * time.Second
+			log.Printf("等待 %.0f 秒后重试...", waitTime.Seconds())
+			time.Sleep(waitTime)
+		}
 	}
-
-	m.mutex.Lock()
-	m.clients[serverCfg.Name] = session
-	m.mutex.Unlock()
-
-	log.Printf("成功连接到MCP服务器: %s", serverCfg.Name)
-	return nil
+	
+	// 所有重试都失败了
+	return fmt.Errorf("MCP服务器 %s 连接失败，已重试 %d 次。建议检查: 1) 命令是否正确 2) 网络连接 3) 包是否已安装", 
+		serverCfg.Name, maxRetries+1)
 }
 
 // createStdioTransport 创建stdio传输
@@ -154,8 +196,85 @@ func (m *MCPManager) createStdioTransport(serverCfg config.MCPServer) (mcp.Trans
 		return nil, fmt.Errorf("stdio传输需要指定命令")
 	}
 
+	// 预检查命令是否可用
+	if err := m.preCheckCommand(serverCfg); err != nil {
+		return nil, fmt.Errorf("命令预检查失败: %v", err)
+	}
+
 	cmd := exec.Command(serverCfg.Command[0], serverCfg.Command[1:]...)
+	
+	// 针对npx的特殊处理
+	if serverCfg.Command[0] == "npx" {
+		// 设置环境变量以避免npx的交互式提示
+		cmd.Env = append(os.Environ(),
+			"NPM_CONFIG_YES=true",
+			"NPM_CONFIG_AUDIT=false", 
+			"NPM_CONFIG_FUND=false",
+			"NPM_CONFIG_UPDATE_NOTIFIER=false",
+			"NPM_CONFIG_PROGRESS=false",
+			"CI=true", // 让npx认为在CI环境中，减少交互
+		)
+		
+		log.Printf("为npx命令设置了特殊环境变量: %v", serverCfg.Command)
+	} else if serverCfg.Command[0] == "uvx" {
+		// 针对uvx的特殊处理
+		cmd.Env = os.Environ()
+		log.Printf("为uvx命令设置了环境变量: %v", serverCfg.Command)
+	} else {
+		// 其他命令使用默认环境
+		cmd.Env = os.Environ()
+	}
+	
 	return &mcp.CommandTransport{Command: cmd}, nil
+}
+
+// preCheckCommand 预检查命令是否可用
+func (m *MCPManager) preCheckCommand(serverCfg config.MCPServer) error {
+	cmdName := serverCfg.Command[0]
+	
+	// 检查命令是否存在
+	_, err := exec.LookPath(cmdName)
+	if err != nil {
+		return fmt.Errorf("命令 %s 不存在或不在PATH中", cmdName)
+	}
+	
+	// 针对npx的特殊检查
+	if cmdName == "npx" && len(serverCfg.Command) > 1 {
+		packageName := serverCfg.Command[1]
+		log.Printf("检查npx包 %s 是否可用...", packageName)
+		
+		// 尝试快速检查包是否可用（不实际运行）
+		checkCmd := exec.Command("npx", "--yes", "--quiet", packageName, "--help")
+		checkCmd.Env = append(os.Environ(),
+			"NPM_CONFIG_YES=true",
+			"NPM_CONFIG_AUDIT=false",
+			"NPM_CONFIG_FUND=false", 
+			"NPM_CONFIG_UPDATE_NOTIFIER=false",
+			"NPM_CONFIG_PROGRESS=false",
+		)
+		
+		// 设置较短的超时时间进行预检查
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		
+		checkCmd = exec.CommandContext(ctx, checkCmd.Args[0], checkCmd.Args[1:]...)
+		checkCmd.Env = append(os.Environ(),
+			"NPM_CONFIG_YES=true",
+			"NPM_CONFIG_AUDIT=false",
+			"NPM_CONFIG_FUND=false",
+			"NPM_CONFIG_UPDATE_NOTIFIER=false",
+			"NPM_CONFIG_PROGRESS=false",
+		)
+		
+		if err := checkCmd.Run(); err != nil {
+			log.Printf("npx包 %s 预检查失败，但将继续尝试连接: %v", packageName, err)
+			// 不返回错误，因为预检查失败不一定意味着实际运行会失败
+		} else {
+			log.Printf("npx包 %s 预检查成功", packageName)
+		}
+	}
+	
+	return nil
 }
 
 // createHTTPTransport 创建HTTP传输 - 暂时禁用
