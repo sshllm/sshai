@@ -16,6 +16,11 @@ import (
 
 // handleToolCall 处理工具调用
 func (c *OpenAIClient) handleToolCall(ctx context.Context, toolCall openai.ToolCall, channel ssh.Channel, assistantMessage *strings.Builder) {
+	c.handleToolCallWithOptions(ctx, toolCall, channel, assistantMessage, true)
+}
+
+// handleToolCallWithOptions 处理工具调用（可选是否显示输出）
+func (c *OpenAIClient) handleToolCallWithOptions(ctx context.Context, toolCall openai.ToolCall, channel ssh.Channel, assistantMessage *strings.Builder, showOutput bool) {
 	if toolCall.Function.Name == "" {
 		return
 	}
@@ -68,7 +73,7 @@ func (c *OpenAIClient) handleToolCall(ctx context.Context, toolCall openai.ToolC
 
 	// 调用MCP工具
 	log.Printf("开始调用MCP工具: %s, 参数: %+v", toolCall.Function.Name, arguments)
-	result, err := mcpManager.CallTool(toolCall.Function.Name, arguments, channel)
+	result, err := mcpManager.CallToolWithOptions(toolCall.Function.Name, arguments, channel, showOutput)
 	if err != nil {
 		log.Printf("MCP工具调用失败: %v", err)
 		channel.Write([]byte(fmt.Sprintf("\r\n❌ 工具调用失败: %v\r\n", err)))

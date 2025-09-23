@@ -19,13 +19,18 @@ type SimpleToolCallBuffer struct {
 
 // processToolCallSimple 简化的工具调用处理
 func (c *OpenAIClient) processToolCallSimple(ctx context.Context, toolCall openai.ToolCall, channel ssh.Channel, assistantMessage *strings.Builder) {
+	c.processToolCallSimpleWithOptions(ctx, toolCall, channel, assistantMessage, true)
+}
+
+// processToolCallSimpleWithOptions 简化的工具调用处理（可选是否显示输出）
+func (c *OpenAIClient) processToolCallSimpleWithOptions(ctx context.Context, toolCall openai.ToolCall, channel ssh.Channel, assistantMessage *strings.Builder, showOutput bool) {
 	// 如果这是一个完整的工具调用（有名称和参数），直接处理
 	if toolCall.Function.Name != "" && toolCall.Function.Arguments != "" {
 		// 检查参数是否是有效的JSON
 		var temp interface{}
 		if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &temp); err == nil {
 			log.Printf("检测到完整的工具调用: %s, 参数: %s", toolCall.Function.Name, toolCall.Function.Arguments)
-			c.handleToolCall(ctx, toolCall, channel, assistantMessage)
+			c.handleToolCallWithOptions(ctx, toolCall, channel, assistantMessage, showOutput)
 			return
 		}
 	}
@@ -71,6 +76,11 @@ func (c *OpenAIClient) accumulateToolCall(toolCall openai.ToolCall) {
 
 // processAllPendingToolCalls 处理所有待处理的工具调用
 func (c *OpenAIClient) processAllPendingToolCalls(ctx context.Context, channel ssh.Channel, assistantMessage *strings.Builder) {
+	c.processAllPendingToolCallsWithOptions(ctx, channel, assistantMessage, true)
+}
+
+// processAllPendingToolCallsWithOptions 处理所有待处理的工具调用（可选是否显示输出）
+func (c *OpenAIClient) processAllPendingToolCallsWithOptions(ctx context.Context, channel ssh.Channel, assistantMessage *strings.Builder, showOutput bool) {
 	if c.pendingToolCalls == nil {
 		return
 	}
@@ -94,7 +104,7 @@ func (c *OpenAIClient) processAllPendingToolCalls(ctx context.Context, channel s
 				},
 			}
 
-			c.handleToolCall(ctx, finalTool, channel, assistantMessage)
+			c.handleToolCallWithOptions(ctx, finalTool, channel, assistantMessage, showOutput)
 		}
 
 		// 清理

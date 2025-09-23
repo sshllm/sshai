@@ -412,8 +412,8 @@ func handleStdinCommand(channel ssh.Channel, username, content string) {
 	}
 	prompt := fmt.Sprintf("%s\n\n%s", stdinPrompt, content)
 
-	// 直接处理内容并获取AI响应，不显示动画效果
-	assistant.ProcessMessageWithOptions(prompt, channel, interrupt, false)
+	// 直接处理内容并获取AI响应，不显示动画效果和工具调用信息
+	assistant.ProcessMessageWithFullOptions(prompt, channel, interrupt, false, false)
 }
 
 // HandleSession 处理SSH会话
@@ -551,8 +551,8 @@ func handleExecCommand(channel ssh.Channel, username, command string) {
 	}
 	fullPrompt := fmt.Sprintf("%s\n\n%s", execPrompt, command)
 
-	// 直接处理命令并获取AI响应，不显示动画效果
-	assistant.ProcessMessageWithOptions(fullPrompt, channel, interrupt, false)
+	// 直接处理命令并获取AI响应，不显示动画效果和工具调用信息
+	assistant.ProcessMessageWithFullOptions(fullPrompt, channel, interrupt, false, false)
 
 	// 添加换行符结束
 	channel.Write([]byte("\r\n"))

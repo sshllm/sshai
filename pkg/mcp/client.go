@@ -158,34 +158,14 @@ func (m *MCPManager) createStdioTransport(serverCfg config.MCPServer) (mcp.Trans
 	return &mcp.CommandTransport{Command: cmd}, nil
 }
 
-// createHTTPTransport 创建HTTP传输
+// createHTTPTransport 创建HTTP传输 - 暂时禁用
 func (m *MCPManager) createHTTPTransport(serverCfg config.MCPServer) (mcp.Transport, error) {
-	if serverCfg.URL == "" {
-		return nil, fmt.Errorf("HTTP传输需要指定URL")
-	}
-
-	transport := &mcp.StreamableClientTransport{
-		Endpoint: serverCfg.URL,
-	}
-
-	// 设置自定义HTTP客户端（如果需要添加请求头）
-	if len(serverCfg.Headers) > 0 {
-		httpClient := &http.Client{
-			Transport: &headerTransport{
-				base:    http.DefaultTransport,
-				headers: serverCfg.Headers,
-			},
-		}
-		transport.HTTPClient = httpClient
-	}
-
-	return transport, nil
+	return nil, fmt.Errorf("HTTP传输暂时不支持")
 }
 
-// createSSETransport 创建SSE传输
+// createSSETransport 创建SSE传输 - 暂时禁用
 func (m *MCPManager) createSSETransport(serverCfg config.MCPServer) (mcp.Transport, error) {
-	// SSE传输通常也使用HTTP，但可能有不同的配置
-	return m.createHTTPTransport(serverCfg)
+	return nil, fmt.Errorf("SSE传输暂时不支持")
 }
 
 // headerTransport HTTP传输包装器，用于添加自定义请求头
@@ -310,6 +290,11 @@ func (m *MCPManager) GetTools() []Tool {
 
 // CallTool 调用MCP工具
 func (m *MCPManager) CallTool(toolName string, arguments map[string]interface{}, channel ssh.Channel) (string, error) {
+	return m.CallToolWithOptions(toolName, arguments, channel, true)
+}
+
+// CallToolWithOptions 调用MCP工具（可选是否显示调用信息）
+func (m *MCPManager) CallToolWithOptions(toolName string, arguments map[string]interface{}, channel ssh.Channel, showOutput bool) (string, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -332,8 +317,8 @@ func (m *MCPManager) CallTool(toolName string, arguments map[string]interface{},
 		return "", fmt.Errorf("服务器 %s 未连接", tool.ServerName)
 	}
 
-	// 在交互模式下显示工具调用信息
-	if channel != nil {
+	// 在交互模式下显示工具调用信息（如果启用）
+	if channel != nil && showOutput {
 		channel.Write([]byte(fmt.Sprintf("\r\n🔧 %s %s...\r\n", i18n.T("mcp.calling_tool"), toolName)))
 	}
 
@@ -348,7 +333,7 @@ func (m *MCPManager) CallTool(toolName string, arguments map[string]interface{},
 
 	result, err := client.CallTool(ctx, params)
 	if err != nil {
-		if channel != nil {
+		if channel != nil && showOutput {
 			channel.Write([]byte(fmt.Sprintf("❌ %s: %v\r\n", i18n.T("mcp.tool_error"), err)))
 		}
 		return "", fmt.Errorf("调用工具失败: %v", err)
@@ -368,7 +353,7 @@ func (m *MCPManager) CallTool(toolName string, arguments map[string]interface{},
 				log.Printf("错误内容[%d]: 未知类型 %T", i, c)
 			}
 		}
-		if channel != nil {
+		if channel != nil && showOutput {
 			channel.Write([]byte(fmt.Sprintf("❌ %s\r\n", i18n.T("mcp.tool_execution_error"))))
 		}
 		return "", fmt.Errorf("工具执行失败")
@@ -387,8 +372,8 @@ func (m *MCPManager) CallTool(toolName string, arguments map[string]interface{},
 		}
 	}
 
-	// 在交互模式下显示工具结果
-	if channel != nil {
+	// 在交互模式下显示工具结果（如果启用）
+	if channel != nil && showOutput {
 		channel.Write([]byte(fmt.Sprintf("✅ %s %s\r\n", i18n.T("mcp.tool_success"), toolName)))
 		if resultText != "" {
 			// 将\n转换为\r\n以适配SSH终端

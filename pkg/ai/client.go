@@ -64,11 +64,16 @@ func NewOpenAIClient(username string) *OpenAIClient {
 
 // ProcessMessage 处理用户消息（带动画）
 func (c *OpenAIClient) ProcessMessage(input string, channel ssh.Channel, interrupt chan bool) {
-	c.ProcessMessageWithOptions(input, channel, interrupt, true)
+	c.ProcessMessageWithFullOptions(input, channel, interrupt, true, true)
 }
 
 // ProcessMessageWithOptions 处理用户消息（可选动画）
 func (c *OpenAIClient) ProcessMessageWithOptions(input string, channel ssh.Channel, interrupt chan bool, showAnimation bool) {
+	c.ProcessMessageWithFullOptions(input, channel, interrupt, showAnimation, true)
+}
+
+// ProcessMessageWithFullOptions 处理用户消息（完整选项）
+func (c *OpenAIClient) ProcessMessageWithFullOptions(input string, channel ssh.Channel, interrupt chan bool, showAnimation bool, showToolOutput bool) {
 	// 添加用户消息到上下文
 	c.messages = append(c.messages, openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleUser,
@@ -93,7 +98,7 @@ func (c *OpenAIClient) ProcessMessageWithOptions(input string, channel ssh.Chann
 	}()
 
 	// 调用流式 API
-	c.callStreamingAPI(ctx, channel, showAnimation)
+	c.callStreamingAPI(ctx, channel, showAnimation, showToolOutput)
 }
 
 // GetAvailableTools 获取可用的MCP工具列表（用于传递给AI模型）
@@ -125,7 +130,7 @@ func (c *OpenAIClient) GetAvailableTools() []openai.Tool {
 }
 
 // callStreamingAPI 调用流式 API
-func (c *OpenAIClient) callStreamingAPI(ctx context.Context, channel ssh.Channel, showAnimation bool) {
+func (c *OpenAIClient) callStreamingAPI(ctx context.Context, channel ssh.Channel, showAnimation bool, showToolOutput bool) {
 	// 创建聊天完成请求
 	req := openai.ChatCompletionRequest{
 		Model:    c.currentModel, // 使用当前设置的模型
@@ -159,11 +164,11 @@ func (c *OpenAIClient) callStreamingAPI(ctx context.Context, channel ssh.Channel
 	defer stream.Close()
 
 	// 处理流式响应
-	c.handleStreamResponse(ctx, stream, channel, showAnimation)
+	c.handleStreamResponse(ctx, stream, channel, showAnimation, showToolOutput)
 }
 
 // handleStreamResponse 处理流式响应
-func (c *OpenAIClient) handleStreamResponse(ctx context.Context, stream *openai.ChatCompletionStream, channel ssh.Channel, showAnimation bool) {
+func (c *OpenAIClient) handleStreamResponse(ctx context.Context, stream *openai.ChatCompletionStream, channel ssh.Channel, showAnimation bool, showToolOutput bool) {
 	var assistantMessage strings.Builder
 	isThinking := false
 	thinkingStartTime := time.Now()
@@ -248,7 +253,7 @@ func (c *OpenAIClient) handleStreamResponse(ctx context.Context, stream *openai.
 				// 处理工具调用
 				if len(delta.ToolCalls) > 0 {
 					for _, toolCall := range delta.ToolCalls {
-						c.processToolCallSimple(ctx, toolCall, channel, &assistantMessage)
+						c.processToolCallSimpleWithOptions(ctx, toolCall, channel, &assistantMessage, showToolOutput)
 					}
 				}
 
@@ -272,7 +277,7 @@ func (c *OpenAIClient) handleStreamResponse(ctx context.Context, stream *openai.
 
 finish:
 	// 处理任何未完成的工具调用
-	c.processAllPendingToolCalls(ctx, channel, &assistantMessage)
+	c.processAllPendingToolCallsWithOptions(ctx, channel, &assistantMessage, showToolOutput)
 
 	// 添加助手回复到上下文
 	if assistantMessage.Len() > 0 {

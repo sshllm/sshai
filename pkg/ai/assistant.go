@@ -38,6 +38,11 @@ func (ai *Assistant) ProcessMessageWithOptions(input string, channel ssh.Channel
 	ai.client.ProcessMessageWithOptions(input, channel, interrupt, showAnimation)
 }
 
+// ProcessMessageWithFullOptions 处理用户消息（完整选项）
+func (ai *Assistant) ProcessMessageWithFullOptions(input string, channel ssh.Channel, interrupt chan bool, showAnimation bool, showToolOutput bool) {
+	ai.client.ProcessMessageWithFullOptions(input, channel, interrupt, showAnimation, showToolOutput)
+}
+
 // GetCurrentModel 获取当前使用的模型
 func (ai *Assistant) GetCurrentModel() string {
 	return ai.client.GetCurrentModel()
