@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"sshai/pkg/config"
 	"sshai/pkg/i18n"
+	"sshai/pkg/mcp"
 	"sshai/pkg/ssh"
 	"sshai/pkg/ui"
 )
@@ -55,6 +58,15 @@ func main() {
 	// 显示程序启动banner
 	showStartupBanner()
 
+	// 初始化MCP管理器
+	if err := mcp.InitGlobalManager(); err != nil {
+		log.Printf("初始化MCP管理器失败: %v", err)
+	}
+
+	// 设置信号处理
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
 	// 创建SSH服务器
 	server, err := ssh.NewServer()
 	if err != nil {
@@ -63,7 +75,18 @@ func main() {
 
 	// 启动服务器
 	log.Println(i18n.T("server.starting", cfg.Server.Port))
-	if err := server.Start(); err != nil {
-		log.Fatal(i18n.T("error.server_start", err))
-	}
+	go func() {
+		if err := server.Start(); err != nil {
+			log.Fatal(i18n.T("error.server_start", err))
+		}
+	}()
+
+	// 等待退出信号
+	<-sigChan
+	log.Println("收到退出信号，正在关闭服务...")
+
+	// 停止MCP管理器
+	mcp.StopGlobalManager()
+	
+	log.Println("服务已关闭")
 }

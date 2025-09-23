@@ -126,6 +126,8 @@ func Init(lang Language, langDir ...string) error {
 			flatMessages: make(map[Language]map[string]string),
 		}
 		err = globalI18n.loadLanguages()
+		// 加载MCP翻译
+		AddMCPTranslations()
 	})
 	return err
 }

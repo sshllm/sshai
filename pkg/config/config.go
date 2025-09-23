@@ -7,6 +7,16 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// MCPServer MCP服务器配置
+type MCPServer struct {
+	Name      string            `yaml:"name"`      // 服务器名称
+	Transport string            `yaml:"transport"` // 传输方式: stdio, sse, http
+	Command   []string          `yaml:"command"`   // stdio模式下的命令
+	URL       string            `yaml:"url"`       // http/sse模式下的URL
+	Headers   map[string]string `yaml:"headers"`   // HTTP请求头
+	Enabled   bool              `yaml:"enabled"`   // 是否启用
+}
+
 // Config 配置结构体
 type Config struct {
 	Server struct {
@@ -45,6 +55,11 @@ type Config struct {
 		StdinPrompt     string `yaml:"stdin_prompt"`     // stdin输入分析提示词
 		ExecPrompt      string `yaml:"exec_prompt"`      // exec命令处理提示词
 	} `yaml:"prompt"`
+	MCP struct {
+		Enabled         bool        `yaml:"enabled"`          // 是否启用MCP功能
+		RefreshInterval int         `yaml:"refresh_interval"` // 工具列表刷新间隔（秒）
+		Servers         []MCPServer `yaml:"servers"`          // MCP服务器列表
+	} `yaml:"mcp"`
 }
 
 // GlobalConfig 全局配置实例

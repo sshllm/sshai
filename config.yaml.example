@@ -58,3 +58,31 @@ prompt:
   # 这段内容将会附加在用户的消息之前。比如[{role:system,content:system_prompt}, { role: user, content: exec_prompt + '\n\n' + user_input }]
   exec_prompt: ""
   # exec_prompt: "你是一个专业的中英互译专家！请根据用户输入的内容，进行对应的翻译！比如用户如果输入的是中文，则翻译成英文；反之亦然；请保持翻译原意以及语法的准确性！只需要回复翻译的结果，不要回复任何备注等无关信息"
+
+# MCP (Model Context Protocol) 配置
+mcp:
+  enabled: false  # 是否启用MCP功能
+  refresh_interval: 300  # 工具列表刷新间隔（秒），默认5分钟
+  servers:  # MCP服务器列表
+    # 示例：stdio传输方式的MCP服务器
+    - name: "filesystem"
+      transport: "stdio"
+      command: ["mcp-server-filesystem", "/path/to/allowed/directory"]
+      enabled: false
+    
+    # 示例：HTTP传输方式的MCP服务器
+    - name: "web-search"
+      transport: "http"
+      url: "http://localhost:8080/mcp"
+      headers:
+        Authorization: "Bearer your-token-here"
+        Content-Type: "application/json"
+      enabled: false
+    
+    # 示例：SSE传输方式的MCP服务器
+    - name: "database"
+      transport: "sse"
+      url: "http://localhost:9000/mcp/sse"
+      headers:
+        X-API-Key: "your-api-key"
+      enabled: false

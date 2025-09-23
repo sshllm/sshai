@@ -12,14 +12,16 @@ import (
 
 	"sshai/pkg/config"
 	"sshai/pkg/i18n"
+	"sshai/pkg/mcp"
 )
 
 // OpenAIClient 基于 go-openai 库的客户端
 type OpenAIClient struct {
-	client       *openai.Client
-	messages     []openai.ChatCompletionMessage
-	username     string
-	currentModel string // 添加当前模型字段
+	client            *openai.Client
+	messages          []openai.ChatCompletionMessage
+	username          string
+	currentModel      string // 添加当前模型字段
+	pendingToolCalls  map[string]*openai.ToolCall // 缓存不完整的工具调用
 }
 
 // NewOpenAIClient 创建新的 OpenAI 客户端
@@ -52,10 +54,11 @@ func NewOpenAIClient(username string) *OpenAIClient {
 	}
 
 	return &OpenAIClient{
-		client:       client,
-		messages:     messages,
-		username:     username,
-		currentModel: cfg.API.DefaultModel, // 初始化为默认模型
+		client:            client,
+		messages:          messages,
+		username:          username,
+		currentModel:      cfg.API.DefaultModel, // 初始化为默认模型
+		pendingToolCalls:  make(map[string]*openai.ToolCall), // 初始化工具调用缓存
 	}
 }
 
@@ -93,6 +96,34 @@ func (c *OpenAIClient) ProcessMessageWithOptions(input string, channel ssh.Chann
 	c.callStreamingAPI(ctx, channel, showAnimation)
 }
 
+// GetAvailableTools 获取可用的MCP工具列表（用于传递给AI模型）
+func (c *OpenAIClient) GetAvailableTools() []openai.Tool {
+	mcpManager := mcp.GetGlobalManager()
+	if mcpManager == nil {
+		return nil
+	}
+
+	mcpTools := mcpManager.GetTools()
+	if len(mcpTools) == 0 {
+		return nil
+	}
+
+	var tools []openai.Tool
+	for _, mcpTool := range mcpTools {
+		tool := openai.Tool{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
+				Name:        mcpTool.Name,
+				Description: mcpTool.Description,
+				Parameters:  mcpTool.Schema,
+			},
+		}
+		tools = append(tools, tool)
+	}
+
+	return tools
+}
+
 // callStreamingAPI 调用流式 API
 func (c *OpenAIClient) callStreamingAPI(ctx context.Context, channel ssh.Channel, showAnimation bool) {
 	// 创建聊天完成请求
@@ -106,6 +137,12 @@ func (c *OpenAIClient) callStreamingAPI(ctx context.Context, channel ssh.Channel
 	cfg := config.Get()
 	if cfg.API.Temperature > 0 {
 		req.Temperature = float32(cfg.API.Temperature)
+	}
+
+	// 添加MCP工具（如果可用）
+	if tools := c.GetAvailableTools(); len(tools) > 0 {
+		req.Tools = tools
+		req.ToolChoice = "auto" // 让AI自动决定是否使用工具
 	}
 
 	// 创建流式响应
@@ -122,11 +159,11 @@ func (c *OpenAIClient) callStreamingAPI(ctx context.Context, channel ssh.Channel
 	defer stream.Close()
 
 	// 处理流式响应
-	c.handleStreamResponse(ctx, stream, channel)
+	c.handleStreamResponse(ctx, stream, channel, showAnimation)
 }
 
 // handleStreamResponse 处理流式响应
-func (c *OpenAIClient) handleStreamResponse(ctx context.Context, stream *openai.ChatCompletionStream, channel ssh.Channel) {
+func (c *OpenAIClient) handleStreamResponse(ctx context.Context, stream *openai.ChatCompletionStream, channel ssh.Channel, showAnimation bool) {
 	var assistantMessage strings.Builder
 	isThinking := false
 	thinkingStartTime := time.Now()
@@ -208,6 +245,13 @@ func (c *OpenAIClient) handleStreamResponse(ctx context.Context, stream *openai.
 					channel.Write([]byte(thinkingText))
 				}
 
+				// 处理工具调用
+				if len(delta.ToolCalls) > 0 {
+					for _, toolCall := range delta.ToolCalls {
+						c.processToolCallSimple(ctx, toolCall, channel, &assistantMessage)
+					}
+				}
+
 				// 处理正常回答内容
 				if delta.Content != "" {
 					if isThinking {
@@ -227,6 +271,9 @@ func (c *OpenAIClient) handleStreamResponse(ctx context.Context, stream *openai.
 	}
 
 finish:
+	// 处理任何未完成的工具调用
+	c.processAllPendingToolCalls(ctx, channel, &assistantMessage)
+
 	// 添加助手回复到上下文
 	if assistantMessage.Len() > 0 {
 		c.messages = append(c.messages, openai.ChatCompletionMessage{
@@ -242,6 +289,7 @@ finish:
 func (c *OpenAIClient) ClearContext() {
 	cfg := config.Get()
 	c.messages = make([]openai.ChatCompletionMessage, 0)
+	c.pendingToolCalls = make(map[string]*openai.ToolCall) // 清空待处理的工具调用
 
 	// 重新添加系统提示词
 	if cfg.Prompt.SystemPrompt != "" {
