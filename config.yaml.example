@@ -69,7 +69,18 @@ mcp:
       transport: "stdio"
       command: ["mcp-server-filesystem", "/path/to/allowed/directory"]
       enabled: false
-    
+    - name: "bing"
+      transport: "stdio"
+      command: ["npx", "bing-cn-mcp"]
+      enabled: true
+    - name: "time"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-time"]
+      enabled: true
+    - name: "fetch"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-fetch"]
+      enabled: true
     # 示例：HTTP传输方式的MCP服务器
     - name: "web-search"
       transport: "http"

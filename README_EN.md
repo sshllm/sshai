@@ -11,6 +11,7 @@ An intelligent AI assistant program that provides AI model services through SSH 
 - 🗝️ **SSH Keys Support** - Support for multiple SSH public keys for passwordless login, compatible with RSA, Ed25519, and other key types
 - 🤖 **Multi-Model Support** - Support for DeepSeek, Hunyuan, and other AI models
 - 💭 **Real-time Thinking Display** - Real-time display of thinking processes for models like DeepSeek R1
+- 🛠️ **MCP Tool Support** - Support for Model Context Protocol, integrating various external tools and services
 - 🎨 **Beautiful Interface** - Colorful output, animations, and ASCII art
 - ⚙️ **Flexible Configuration** - Support for dynamic configuration file specification (-c parameter) and complete YAML configuration
 - 🌐 **Multi-language Support** - Support for Chinese and English interfaces
@@ -64,6 +65,26 @@ prompt:
   system_prompt: "You are a professional AI assistant, please answer questions in English."
   stdin_prompt: "Please analyze the following content and provide relevant help or suggestions:"
   exec_prompt: "Please answer the following question or execute the following task:"
+
+# MCP Tool Configuration
+mcp:
+  enabled: true  # Enable MCP functionality
+  refresh_interval: 300  # Tool list refresh interval (seconds)
+  servers:
+    # Stable services using uvx (recommended)
+    - name: "time"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-time"]
+      enabled: true
+    - name: "fetch"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-fetch"]
+      enabled: true
+    # Services using npx (may require longer startup time)
+    - name: "bing"
+      transport: "stdio"
+      command: ["npx", "bing-cn-mcp"]
+      enabled: true
 ```
 
 ### 3. Run the Server
@@ -207,6 +228,50 @@ prompt:
   exec_prompt: "Please answer the following question:"
 ```
 
+### MCP Tool Configuration
+
+SSHAI supports Model Context Protocol (MCP) for integrating various external tools and services:
+
+```yaml
+mcp:
+  enabled: true
+  refresh_interval: 300  # Tool list refresh interval (seconds)
+  servers:
+    # Recommended using uvx (more stable, faster startup)
+    - name: "time"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-time"]
+      enabled: true
+    - name: "fetch"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-fetch"]
+      enabled: true
+    - name: "filesystem"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-filesystem", "/tmp"]
+      enabled: true
+    
+    # npx services (may require longer startup time)
+    - name: "bing"
+      transport: "stdio"
+      command: ["npx", "bing-cn-mcp"]
+      enabled: true
+```
+
+**MCP Tool Features**:
+- 🔧 **Automatic Tool Discovery** - Automatically detect and load tools provided by MCP servers
+- 🔄 **Smart Retry Mechanism** - Connection optimization for package managers like npx
+- ⏱️ **Timeout Protection** - Prevent tool calls from hanging, with connection timeout and retry support
+- 🎯 **Selective Output** - Hide tool call processes in pipeline and command modes, showing only results
+- 📊 **Real-time Status Monitoring** - Display tool connection status and execution progress
+
+**Supported Package Managers**:
+- `uvx` - Python package manager (recommended, more stable)
+- `npx` - Node.js package manager (supported but may be slower)
+- Direct commands - Pre-installed MCP servers
+
+If you encounter npx server connection issues, please refer to the [MCP NPX Troubleshooting Guide](docs/MCP_NPX_TROUBLESHOOTING.md).
+
 ## 🧪 Testing
 
 The project includes comprehensive test scripts:
@@ -238,6 +303,8 @@ The project includes comprehensive test scripts:
 - [Architecture Documentation](docs/MODULAR_ARCHITECTURE.md) - Modular architecture design
 - [Authentication Configuration](docs/AUTH_CONFIG_EXAMPLE.md) - SSH authentication configuration examples
 - [SSH Keys Guide](docs/SSH_KEYS_GUIDE.md) - SSH public key passwordless login configuration guide
+- [MCP Usage Guide](docs/MCP_USAGE_GUIDE.md) - Model Context Protocol tool integration guide
+- [MCP NPX Troubleshooting](docs/MCP_NPX_TROUBLESHOOTING.md) - NPX MCP server connection issue solutions
 
 ## 🤝 Contributing
 

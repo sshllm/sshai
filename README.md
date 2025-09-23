@@ -34,6 +34,7 @@ ssh test.sshai.top -p 9527
 - 🗝️ **SSH Keys支持** - 支持多个SSH公钥免密登录，兼容RSA、Ed25519等密钥类型
 - 🤖 **多模型支持** - 支持DeepSeek、Hunyuan等多种AI模型
 - 💭 **实时思考显示** - 支持DeepSeek R1等模型的思考过程实时展示
+- 🛠️ **MCP工具支持** - 支持Model Context Protocol，可集成各种外部工具和服务
 - 🎨 **美观界面** - 彩色输出、动画效果和ASCII艺术
 - ⚙️ **灵活配置** - 支持动态指定配置文件（-c参数）和完整的YAML配置
 - 🌐 **多语言支持** - 支持中文和英文界面
@@ -87,6 +88,26 @@ prompt:
   system_prompt: "你是一个专业的AI助手，请用中文回答问题。"
   stdin_prompt: "请分析以下内容并提供相关的帮助或建议："
   exec_prompt: "请回答以下问题或执行以下任务："
+
+# MCP工具配置
+mcp:
+  enabled: true  # 启用MCP功能
+  refresh_interval: 300  # 工具列表刷新间隔（秒）
+  servers:
+    # 使用uvx的稳定服务（推荐）
+    - name: "time"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-time"]
+      enabled: true
+    - name: "fetch"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-fetch"]
+      enabled: true
+    # 使用npx的服务（可能需要更长启动时间）
+    - name: "bing"
+      transport: "stdio"
+      command: ["npx", "bing-cn-mcp"]
+      enabled: true
 ```
 
 ### 3. 运行服务器
@@ -230,6 +251,50 @@ prompt:
   exec_prompt: "请回答以下问题："
 ```
 
+### MCP工具配置
+
+SSHAI支持Model Context Protocol (MCP)，可以集成各种外部工具和服务：
+
+```yaml
+mcp:
+  enabled: true
+  refresh_interval: 300  # 工具列表刷新间隔（秒）
+  servers:
+    # 推荐使用uvx（更稳定、启动更快）
+    - name: "time"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-time"]
+      enabled: true
+    - name: "fetch"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-fetch"]
+      enabled: true
+    - name: "filesystem"
+      transport: "stdio"
+      command: ["uvx", "mcp-server-filesystem", "/tmp"]
+      enabled: true
+    
+    # npx服务（可能需要更长启动时间）
+    - name: "bing"
+      transport: "stdio"
+      command: ["npx", "bing-cn-mcp"]
+      enabled: true
+```
+
+**MCP工具特性**：
+- 🔧 **自动工具发现** - 自动检测和加载MCP服务器提供的工具
+- 🔄 **智能重试机制** - 针对npx等包管理器的连接优化
+- ⏱️ **超时保护** - 避免工具调用卡住，支持连接超时和重试
+- 🎯 **选择性输出** - 在管道模式和命令模式下隐藏工具调用过程，只显示结果
+- 📊 **实时状态监控** - 显示工具连接状态和执行进度
+
+**支持的包管理器**：
+- `uvx` - Python包管理器（推荐，更稳定）
+- `npx` - Node.js包管理器（支持但可能较慢）
+- 直接命令 - 预安装的MCP服务器
+
+如果遇到npx服务器连接问题，请参考 [MCP NPX故障排除指南](docs/MCP_NPX_TROUBLESHOOTING.md)。
+
 ## 🧪 测试
 
 项目包含完整的测试脚本：
@@ -261,6 +326,8 @@ prompt:
 - [架构说明](docs/MODULAR_ARCHITECTURE.md) - 模块化架构设计
 - [认证配置](docs/AUTH_CONFIG_EXAMPLE.md) - SSH认证配置示例
 - [SSH Keys指南](docs/SSH_KEYS_GUIDE.md) - SSH公钥免密登录配置指南
+- [MCP使用指南](docs/MCP_USAGE_GUIDE.md) - Model Context Protocol工具集成指南
+- [MCP NPX故障排除](docs/MCP_NPX_TROUBLESHOOTING.md) - NPX MCP服务器连接问题解决方案
 
 ## 🤝 贡献
 
