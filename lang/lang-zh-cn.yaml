@@ -55,8 +55,69 @@ user:
   prompt: "%s@sshai.top> "
   input_empty: "请输入消息"
   exit: "再见！"
-  help: "输入消息与AI对话，输入 'exit' 退出"
+  help: "输入消息与AI对话，输入 'exit' 退出，输入 '/help' 查看自定义命令"
   clear_context: "对话上下文已清空"
+
+# SSH会话相关
+ssh:
+  banner_welcome: "欢迎使用 SSH AI 助手"
+  banner_description: "输入您的问题，AI 将为您提供帮助"
+  banner_commands: "输入 'exit' 或 'quit' 退出程序，输入 '/help' 查看自定义命令"
+  input_prompt: "您"
+  ai_thinking: "AI 正在思考..."
+  connection_established: "SSH 连接已建立"
+  goodbye: "再见！感谢使用 SSH AI 助手"
+  invalid_command: "无效命令"
+  processing_request: "正在处理您的请求..."
+  
+  # 自定义命令相关
+  commands:
+    help:
+      name: "/help"
+      description: "显示所有可用的自定义命令和使用说明"
+    new:
+      name: "/new"
+      description: "清空当前对话上下文，开始新的对话会话"
+    history:
+      name: "/history"
+      description: "查看当前对话的历史记录，包含时间和角色信息"
+    clear:
+      name: "/clear"
+      description: "清空终端屏幕内容"
+    model:
+      name: "/model"
+      description: "切换当前对话使用的AI模型"
+  
+  messages:
+    help_title: "📋 可用的自定义命令:"
+    help_tips_title: "💡 提示:"
+    help_tip_tab: "• 使用 Tab 键可以自动补全命令"
+    help_tip_exit: "• 输入 'exit' 或 'quit' 退出程序"
+    help_tip_chat: "• 直接输入消息与AI对话"
+    
+    context_cleared: "✅ 对话上下文已清空，开始新对话"
+    history_empty: "📝 当前对话历史为空"
+    history_title: "📝 对话历史记录:"
+    history_total: "📊 总计: %d 条消息"
+    
+    screen_cleared: "🧹 屏幕已清空"
+    
+    model_loading: "🔄 正在加载模型列表..."
+    model_load_failed: "❌ 获取模型列表失败: %v"
+    model_not_found: "⚠️  没有找到可用的模型"
+    model_current: "当前模型: %s"
+    model_switched: "✅ 已切换到模型: %s"
+    model_unchanged: "ℹ️  模型未更改"
+    model_cancelled: "❌ 模型切换已取消"
+    model_select_prompt: "请选择模型 (输入数字，按 Ctrl+C 取消): "
+    model_invalid_choice: "❌ 无效选择，请重新输入: "
+    
+    unknown_command: "未知命令: %s"
+    command_help_hint: "输入 /help 查看可用命令"
+    
+    role_system: "系统"
+    role_user: "用户"
+    role_assistant: "助手"
 
 # 命令相关
 cmd:
