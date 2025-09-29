@@ -79,7 +79,7 @@ func (h *ConversationHistory) Clear() {
 type CustomCommand struct {
 	Name        string
 	Description string
-	Handler     func(channel ssh.Channel, assistant *ai.Assistant, args []string, conversationHistory *ConversationHistory, dynamicPrompt string)
+	Handler     func(channel ssh.Channel, assistant *ai.Assistant, args []string, conversationHistory *ConversationHistory, dynamicPrompt string) string
 }
 
 // getCustomCommands 获取自定义命令列表
@@ -426,10 +426,10 @@ func getCommandMatches(prefix string) []string {
 }
 
 // handleCustomCommand 处理自定义命令
-func handleCustomCommand(channel ssh.Channel, assistant *ai.Assistant, input string, conversationHistory *ConversationHistory, dynamicPrompt string) {
+func handleCustomCommand(channel ssh.Channel, assistant *ai.Assistant, input string, conversationHistory *ConversationHistory, dynamicPrompt string) string {
 	parts := strings.Fields(input)
 	if len(parts) == 0 {
-		return
+		return ""
 	}
 	
 	command := parts[0]
@@ -440,28 +440,38 @@ func handleCustomCommand(channel ssh.Channel, assistant *ai.Assistant, input str
 	conversationHistory.AddMessage("user", input)
 	
 	if cmd, exists := customCommands[command]; exists {
-		cmd.Handler(channel, assistant, args, conversationHistory, dynamicPrompt)
+		newModel := cmd.Handler(channel, assistant, args, conversationHistory, dynamicPrompt)
+		return newModel // 返回新模型名称（如果有的话）
 	} else {
 		channel.Write([]byte(fmt.Sprintf("未知命令: %s\r\n", command)))
 		channel.Write([]byte("输入 /help 查看可用命令\r\n"))
 	}
 	
-	// 显示提示符
-	channel.Write([]byte(dynamicPrompt))
+	return ""
 }
 
 // handleHelpCommand 处理help命令
-func handleHelpCommand(channel ssh.Channel, assistant *ai.Assistant, args []string, conversationHistory *ConversationHistory, dynamicPrompt string) {
+func handleHelpCommand(channel ssh.Channel, assistant *ai.Assistant, args []string, conversationHistory *ConversationHistory, dynamicPrompt string) string {
 	channel.Write([]byte(ui.BrightCyanText("📋 可用的自定义命令:\r\n\r\n")))
 	
 	customCommands := getCustomCommands()
-	// 按字母顺序显示命令
+	// 按字母顺序显示命令，并计算最长命令名的长度用于对齐
 	commands := []string{"/clear", "/help", "/history", "/model", "/new"}
+	maxCmdLen := 0
+	for _, cmdName := range commands {
+		if len(cmdName) > maxCmdLen {
+			maxCmdLen = len(cmdName)
+		}
+	}
 	
 	for _, cmdName := range commands {
 		if cmd, exists := customCommands[cmdName]; exists {
-			channel.Write([]byte(fmt.Sprintf("  %s - %s\r\n", 
-				ui.BrightYellowText(cmd.Name), 
+			// 计算需要的空格数来对齐说明文本
+			padding := maxCmdLen - len(cmdName) + 2
+			spaces := strings.Repeat(" ", padding)
+			channel.Write([]byte(fmt.Sprintf("  %s%s%s\r\n", 
+				ui.BrightYellowText(cmd.Name),
+				spaces,
 				cmd.Description)))
 		}
 	}
@@ -474,39 +484,49 @@ func handleHelpCommand(channel ssh.Channel, assistant *ai.Assistant, args []stri
 	
 	// 添加系统消息到对话历史
 	conversationHistory.AddMessage("system", "显示了帮助信息")
+	return ""
 }
 
 // handleNewCommand 处理new命令
-func handleNewCommand(channel ssh.Channel, assistant *ai.Assistant, args []string, conversationHistory *ConversationHistory, dynamicPrompt string) {
+func handleNewCommand(channel ssh.Channel, assistant *ai.Assistant, args []string, conversationHistory *ConversationHistory, dynamicPrompt string) string {
 	assistant.ClearContext()
 	conversationHistory.Clear()
 	channel.Write([]byte(ui.BrightGreenText("✅ 对话上下文已清空，开始新对话\r\n\r\n")))
 	
 	// 添加系统消息到对话历史
 	conversationHistory.AddMessage("system", "清空了对话上下文，开始新对话")
+	return ""
 }
 
 // handleHistoryCommand 处理history命令
-func handleHistoryCommand(channel ssh.Channel, assistant *ai.Assistant, args []string, conversationHistory *ConversationHistory, dynamicPrompt string) {
+func handleHistoryCommand(channel ssh.Channel, assistant *ai.Assistant, args []string, conversationHistory *ConversationHistory, dynamicPrompt string) string {
 	messages := conversationHistory.GetMessages()
 	
-	if len(messages) == 0 {
+	// 过滤出用户和助手的消息，排除系统消息和用户指令
+	var userAssistantMessages []ConversationMessage
+	for _, msg := range messages {
+		if msg.Role == "assistant" {
+			userAssistantMessages = append(userAssistantMessages, msg)
+		} else if msg.Role == "user" && !strings.HasPrefix(msg.Content, "/") {
+			// 只包含非指令的用户消息
+			userAssistantMessages = append(userAssistantMessages, msg)
+		}
+	}
+	
+	if len(userAssistantMessages) == 0 {
 		channel.Write([]byte(ui.BrightYellowText("📝 当前对话历史为空\r\n\r\n")))
-		return
+		return ""
 	}
 	
 	channel.Write([]byte(ui.BrightCyanText("📝 对话历史记录:\r\n\r\n")))
 	
-	for i, msg := range messages {
+	for i, msg := range userAssistantMessages {
 		// 格式化时间
 		timeStr := msg.Timestamp.Format("15:04:05")
 		
 		// 根据角色设置不同颜色
 		var roleColor, roleIcon string
 		switch msg.Role {
-		case "system":
-			roleColor = ui.BrightMagentaText("系统")
-			roleIcon = "🔧"
 		case "user":
 			roleColor = ui.BrightGreenText("用户")
 			roleIcon = "👤"
@@ -539,14 +559,15 @@ func handleHistoryCommand(channel ssh.Channel, assistant *ai.Assistant, args []s
 		channel.Write([]byte("\r\n"))
 	}
 	
-	channel.Write([]byte(ui.BrightCyanText(fmt.Sprintf("📊 总计: %d 条消息\r\n\r\n", len(messages)))))
+	channel.Write([]byte(ui.BrightCyanText(fmt.Sprintf("📊 总计: %d 条对话消息\r\n\r\n", len(userAssistantMessages)))))
 	
 	// 添加系统消息到对话历史
-	conversationHistory.AddMessage("system", fmt.Sprintf("查看了对话历史，共%d条消息", len(messages)))
+	conversationHistory.AddMessage("system", fmt.Sprintf("查看了对话历史，共%d条对话消息", len(userAssistantMessages)))
+	return ""
 }
 
 // handleClearCommand 处理clear命令
-func handleClearCommand(channel ssh.Channel, assistant *ai.Assistant, args []string, conversationHistory *ConversationHistory, dynamicPrompt string) {
+func handleClearCommand(channel ssh.Channel, assistant *ai.Assistant, args []string, conversationHistory *ConversationHistory, dynamicPrompt string) string {
 	// 发送清屏命令
 	channel.Write([]byte("\033[2J\033[H"))
 	
@@ -562,10 +583,11 @@ func handleClearCommand(channel ssh.Channel, assistant *ai.Assistant, args []str
 	
 	// 添加系统消息到对话历史
 	conversationHistory.AddMessage("system", "清空了屏幕")
+	return ""
 }
 
 // handleModelCommand 处理model命令
-func handleModelCommand(channel ssh.Channel, assistant *ai.Assistant, args []string, conversationHistory *ConversationHistory, dynamicPrompt string) {
+func handleModelCommand(channel ssh.Channel, assistant *ai.Assistant, args []string, conversationHistory *ConversationHistory, dynamicPrompt string) string {
 	channel.Write([]byte(ui.BrightCyanText("🔄 正在加载模型列表...\r\n")))
 	
 	// 获取可用模型
@@ -573,13 +595,13 @@ func handleModelCommand(channel ssh.Channel, assistant *ai.Assistant, args []str
 	if err != nil {
 		channel.Write([]byte(ui.BrightRedText(fmt.Sprintf("❌ 获取模型列表失败: %v\r\n\r\n", err))))
 		conversationHistory.AddMessage("system", fmt.Sprintf("获取模型列表失败: %v", err))
-		return
+		return ""
 	}
 	
 	if len(models) == 0 {
 		channel.Write([]byte(ui.BrightYellowText("⚠️  没有找到可用的模型\r\n\r\n")))
 		conversationHistory.AddMessage("system", "没有找到可用的模型")
-		return
+		return ""
 	}
 	
 	// 显示当前模型
@@ -592,11 +614,13 @@ func handleModelCommand(channel ssh.Channel, assistant *ai.Assistant, args []str
 		assistant.SetModel(selectedModel)
 		channel.Write([]byte(fmt.Sprintf("✅ 已切换到模型: %s\r\n\r\n", ui.BrightGreenText(selectedModel))))
 		conversationHistory.AddMessage("system", fmt.Sprintf("切换到模型: %s", selectedModel))
+		return selectedModel // 返回新模型名称
 	} else if selectedModel == currentModel {
 		channel.Write([]byte(ui.BrightYellowText("ℹ️  模型未更改\r\n\r\n")))
 	} else {
 		channel.Write([]byte(ui.BrightYellowText("❌ 模型切换已取消\r\n\r\n")))
 	}
+	return ""
 }
 
 // showModelSelectionForCommand 为命令显示模型选择界面
@@ -991,7 +1015,7 @@ func HandleSession(channel ssh.Channel, requests <-chan *ssh.Request, username s
 	conversationHistory := NewConversationHistory()
 	
 	// 处理用户输入
-	handleUserInput(channel, assistant, dynamicPrompt, conversationHistory)
+	handleUserInput(channel, assistant, username, conversationHistory)
 }
 
 // handleExecCommand 处理执行命令模式
@@ -1027,7 +1051,7 @@ func handleExecCommand(channel ssh.Channel, username, command string) {
 }
 
 // handleUserInput 处理用户输入
-func handleUserInput(channel ssh.Channel, assistant *ai.Assistant, dynamicPrompt string, conversationHistory *ConversationHistory) {
+func handleUserInput(channel ssh.Channel, assistant *ai.Assistant, username string, conversationHistory *ConversationHistory) {
 	buffer := make([]byte, 1024)
 	history := NewCommandHistory()
 	inputState := NewInputState()
@@ -1040,6 +1064,11 @@ func handleUserInput(channel ssh.Channel, assistant *ai.Assistant, dynamicPrompt
 		matches     []string
 		currentIdx  int
 	}
+	
+	// 生成初始动态提示符
+	hostname := "sshai.top" // 可以从配置或系统获取
+	currentModel := assistant.GetCurrentModel()
+	dynamicPrompt := ui.FormatPrompt(username, hostname, currentModel)
 
 	for {
 		n, err := channel.Read(buffer)
@@ -1127,8 +1156,13 @@ func handleUserInput(channel ssh.Channel, assistant *ai.Assistant, dynamicPrompt
 				
 				currentInput := inputState.String()
 				
-				// 检查是否是自定义命令的补全
-				if strings.HasPrefix(currentInput, "/") {
+				// 如果输入为空，显示帮助信息
+				if currentInput == "" {
+					channel.Write([]byte("\r\n"))
+					handleHelpCommand(channel, assistant, []string{}, conversationHistory, dynamicPrompt)
+					channel.Write([]byte(dynamicPrompt))
+				} else if strings.HasPrefix(currentInput, "/") {
+					// 检查是否是自定义命令的补全
 					handleTabCompletion(channel, inputState, &tabCompletionState, dynamicPrompt)
 				}
 				
@@ -1151,7 +1185,14 @@ func handleUserInput(channel ssh.Channel, assistant *ai.Assistant, dynamicPrompt
 
 				// 检查是否是自定义命令
 				if strings.HasPrefix(input, "/") {
-					handleCustomCommand(channel, assistant, input, conversationHistory, dynamicPrompt)
+					newModel := handleCustomCommand(channel, assistant, input, conversationHistory, dynamicPrompt)
+					// 如果模型发生了变化，更新动态提示符
+					if newModel != "" {
+						currentModel = newModel
+						dynamicPrompt = ui.FormatPrompt(username, hostname, currentModel)
+					}
+					// 显示提示符
+					channel.Write([]byte(dynamicPrompt))
 				} else if input == "exit" || input == "quit" {
 					channel.Write([]byte(i18n.T("user.exit") + "\r\n"))
 					return
